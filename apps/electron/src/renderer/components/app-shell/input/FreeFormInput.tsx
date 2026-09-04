@@ -196,7 +196,7 @@ export interface FreeFormInputProps {
   sessionFolderPath?: string
   /** Session ID for scoping events like approve-plan */
   sessionId?: string
-  /** Current session status of the session (for # menu state selection) */
+  /** Current session status (retained for caller compatibility) */
   currentSessionStatus?: string
   /** Disable send action (for tutorial guidance) */
   disableSend?: boolean
@@ -291,7 +291,6 @@ export function FreeFormInput({
   onWorkingDirectoryChange,
   sessionFolderPath,
   sessionId,
-  currentSessionStatus,
   disableSend = false,
   isEmptySession = false,
   contextStatus,
@@ -417,9 +416,6 @@ export function FreeFormInput({
   }, [llmConnections, effectiveConnection])
 
 
-  // Access sessionStatuses and onSessionStatusChange from context for the # menu state picker
-  const sessionStatuses = appShellCtx?.sessionStatuses ?? []
-  const onSessionStatusChange = appShellCtx?.onSessionStatusChange
   // Resolve workspace rootPath for "Add New Label" deep link
   const workspaceRootPath = React.useMemo(() => {
     if (!appShellCtx || !workspaceId) return null
@@ -1001,8 +997,6 @@ export function FreeFormInput({
     labels,
     sessionLabels,
     onSelect: handleLabelSelect,
-    sessionStatuses,
-    activeStateId: currentSessionStatus,
   })
 
   // "Add New Label" handler: cleans up the #trigger text and opens a controlled
@@ -1518,17 +1512,6 @@ export function FreeFormInput({
     richInputRef.current?.focus()
   }, [inlineLabel, syncToParent])
 
-  // Handle inline state selection from # menu (removes #text, changes session state)
-  const handleInlineStateSelect = React.useCallback((stateId: string) => {
-    const newValue = inlineLabel.handleSelect('')
-    setInput(newValue)
-    syncToParent(newValue)
-    if (sessionId) {
-      onSessionStatusChange?.(sessionId, stateId)
-    }
-    richInputRef.current?.focus()
-  }, [inlineLabel, syncToParent, sessionId, onSessionStatusChange])
-
   const followUpLayoutKey = React.useMemo(
     () => followUpItems.map(item => [
       item.id,
@@ -1610,7 +1593,7 @@ export function FreeFormInput({
           isSearching={inlineMention.isSearching}
         />
 
-        {/* Inline Label & State Autocomplete (#labels / #states) */}
+        {/* Inline Label Autocomplete (#labels) */}
         <InlineLabelMenu
           open={inlineLabel.isOpen}
           onOpenChange={(open) => !open && inlineLabel.close()}
@@ -1619,9 +1602,6 @@ export function FreeFormInput({
           onAddLabel={handleAddLabel}
           filter={inlineLabel.filter}
           position={inlineLabel.position}
-          states={inlineLabel.states}
-          activeStateId={inlineLabel.activeStateId}
-          onSelectState={handleInlineStateSelect}
         />
 
         {/* Controlled EditPopover for "Add New Label" — opens when user selects
