@@ -49,6 +49,7 @@ interface TopBarProps {
   onOpenSettingsSubpage: (subpage: SettingsMenuItem['id']) => void
   onOpenKeyboardShortcuts: () => void
   onOpenStoredUserPreferences: () => void
+  onOpenLabels: () => void
   onBack: () => void
   onForward: () => void
   canGoBack: boolean
@@ -75,6 +76,7 @@ export function TopBar({
   onOpenSettingsSubpage,
   onOpenKeyboardShortcuts,
   onOpenStoredUserPreferences,
+  onOpenLabels,
   onBack,
   onForward,
   canGoBack,
@@ -218,6 +220,16 @@ export function TopBar({
               />
             )}
           </div>
+          {!isCompact && (
+            <button
+              type="button"
+              onClick={onOpenLabels}
+              className="titlebar-no-drag inline-flex h-[30px] shrink-0 items-center gap-1.5 rounded-[8px] px-2 text-[13px] text-foreground/50 transition-colors hover:bg-foreground/5 hover:text-foreground"
+            >
+              <Icons.Tag className="h-3.5 w-3.5" />
+              {t('sidebar.labels')}
+            </button>
+          )}
         </div>
       </div>
 

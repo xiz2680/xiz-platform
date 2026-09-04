@@ -9,7 +9,7 @@
 
 import { useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MoreHorizontal, AppWindow } from 'lucide-react'
+import { MoreHorizontal, AppWindow, Archive } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -38,6 +38,8 @@ interface SettingsNavigatorProps {
   selectedSubpage: SettingsSubpage | null
   /** Called when a subpage is selected */
   onSelectSubpage: (subpage: SettingsSubpage) => void
+  /** Opens the archived sessions view shown after Preferences. */
+  onSelectArchived: () => void
 }
 
 interface SettingsItem {
@@ -151,6 +153,7 @@ function SettingsItemRow({ item, isSelected, isFirst, onSelect }: SettingsItemRo
 export default function SettingsNavigator({
   selectedSubpage,
   onSelectSubpage,
+  onSelectArchived,
 }: SettingsNavigatorProps) {
   const { t } = useTranslation()
 
@@ -177,6 +180,15 @@ export default function SettingsNavigator({
               onSelect={() => onSelectSubpage(item.id)}
             />
           ))}
+          <div className="mx-4 my-1 border-t border-border/50" />
+          <button
+            type="button"
+            onClick={onSelectArchived}
+            className="mx-2 flex w-[calc(100%_-_1rem)] items-center gap-3 rounded-[8px] px-4 py-3 text-left text-sm text-foreground/70 transition-colors hover:bg-foreground/5 hover:text-foreground"
+          >
+            <Archive className="h-4 w-4 text-muted-foreground" />
+            <span>{t('sidebar.archived')}</span>
+          </button>
         </div>
       </div>
     </div>
