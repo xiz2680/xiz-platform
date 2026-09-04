@@ -45,8 +45,8 @@ import {
   filterItems as filterLabelMenuItems,
   type LabelMenuItem,
 } from '@/components/ui/label-menu-utils'
-import { findLabelById } from '@craft-agent/shared/labels'
-import type { LabelConfig } from '@craft-agent/shared/labels'
+import { findLabelById } from '@xiz-platform/shared/labels'
+import type { LabelConfig } from '@xiz-platform/shared/labels'
 import { type SessionStatus, type SessionStatusId } from '@/config/session-status-config'
 import type { ChatGroupingMode } from './SessionList'
 

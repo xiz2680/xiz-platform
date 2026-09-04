@@ -8,7 +8,7 @@
 
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { FolderKanban, MessageSquare, Plus, Trash2 } from 'lucide-react'
+import { FolderKanban, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -20,15 +20,13 @@ import {
   ContextMenuTrigger,
   StyledContextMenuContent,
 } from '@/components/ui/styled-context-menu'
-import type { LoadedProject } from '@craft-agent/shared/projects/types'
+import type { LoadedProject } from '@xiz-platform/shared/projects/types'
 
 export interface ProjectsListPanelProps {
   projects: LoadedProject[]
   workspaceId: string
   onProjectClick: (slug: string) => void
   onAddProject?: () => void
-  /** Jump to All Sessions filtered by this project's id. */
-  onJumpToSessions?: (projectId: string) => void
   selectedProjectSlug?: string | null
   className?: string
 }
@@ -38,7 +36,6 @@ export function ProjectsListPanel({
   workspaceId,
   onProjectClick,
   onAddProject,
-  onJumpToSessions,
   selectedProjectSlug,
   className,
 }: ProjectsListPanelProps) {
@@ -93,7 +90,6 @@ export function ProjectsListPanel({
                 isFirst={index === 0}
                 onClick={() => onProjectClick(project.config.slug)}
                 onDelete={() => handleDelete(project)}
-                onJumpToSessions={onJumpToSessions ? () => onJumpToSessions(project.config.id) : undefined}
               />
             ))}
           </div>
@@ -109,10 +105,9 @@ interface ProjectRowProps {
   isFirst: boolean
   onClick: () => void
   onDelete: () => void
-  onJumpToSessions?: () => void
 }
 
-function ProjectRow({ project, isSelected, isFirst, onClick, onDelete, onJumpToSessions }: ProjectRowProps) {
+function ProjectRow({ project, isSelected, isFirst, onClick, onDelete }: ProjectRowProps) {
   const config = project.config
   const subtitle = config.description?.trim() || config.workingDirectory || ''
 
@@ -135,27 +130,18 @@ function ProjectRow({ project, isSelected, isFirst, onClick, onDelete, onJumpToS
       </ContextMenuTrigger>
       <StyledContextMenuContent>
         <ContextMenuProvider>
-          <ProjectRowMenu onDelete={onDelete} onJumpToSessions={onJumpToSessions} />
+          <ProjectRowMenu onDelete={onDelete} />
         </ContextMenuProvider>
       </StyledContextMenuContent>
     </ContextMenu>
   )
 }
 
-function ProjectRowMenu({ onDelete, onJumpToSessions }: { onDelete: () => void; onJumpToSessions?: () => void }) {
+function ProjectRowMenu({ onDelete }: { onDelete: () => void }) {
   const { t } = useTranslation()
-  const { MenuItem, Separator } = useMenuComponents()
+  const { MenuItem } = useMenuComponents()
   return (
     <>
-      {onJumpToSessions && (
-        <>
-          <MenuItem onClick={onJumpToSessions}>
-            <MessageSquare className="h-3.5 w-3.5" />
-            <span className="flex-1">{t('projectsList.jumpToSessions')}</span>
-          </MenuItem>
-          <Separator />
-        </>
-      )}
       <MenuItem onClick={onDelete} variant="destructive">
         <Trash2 className="h-3.5 w-3.5" />
         <span className="flex-1">{t('projectsList.delete')}</span>

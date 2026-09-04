@@ -1,7 +1,7 @@
 /**
- * @craft-agent/messaging-gateway
+ * @xiz-platform/messaging-gateway
  *
- * Messaging gateway for Craft Agent — Telegram & WhatsApp.
+ * Messaging gateway for XIZ Platform — Telegram & WhatsApp.
  */
 
 export { MessagingGateway, type GatewayOptions } from './gateway'

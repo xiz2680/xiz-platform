@@ -16,7 +16,7 @@
 import {
   classifyExternalUrl,
   type UrlClassification,
-} from '@craft-agent/shared/utils/url-safety'
+} from '@xiz-platform/shared/utils/url-safety'
 
 export type OpenExternalUrlResult =
   | { opened: true }

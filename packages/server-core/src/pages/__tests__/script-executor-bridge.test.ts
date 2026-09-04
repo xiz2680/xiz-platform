@@ -8,8 +8,8 @@
 
 import { describe, test, expect } from 'bun:test'
 import { createPagesScriptExecutor } from '../script-executor-bridge'
-import type { ScriptAction, ScriptActionResult } from '@craft-agent/shared/automations'
-import type { Logger } from '@craft-agent/server-core/runtime'
+import type { ScriptAction, ScriptActionResult } from '@xiz-platform/shared/automations'
+import type { Logger } from '@xiz-platform/server-core/runtime'
 
 const log: Logger = { debug() {}, info() {}, warn() {}, error() {} } as unknown as Logger
 const signal = new AbortController().signal

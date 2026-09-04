@@ -62,7 +62,7 @@ export interface LinkItem {
   id: string            // Unique ID for navigation (e.g., 'nav:allSessions')
   title: string
   label?: string        // Optional badge (e.g., count)
-  icon: LucideIcon | React.ReactNode  // LucideIcon or custom React element
+  icon?: LucideIcon | React.ReactNode  // LucideIcon or custom React element
   iconColor?: string    // Optional color class for the icon
   /** Whether the icon responds to color (uses currentColor). Default true for Lucide icons. */
   iconColorable?: boolean
@@ -83,6 +83,8 @@ export interface LinkItem {
   sortable?: SortableConfig
   // Optional element rendered after the title (e.g., label type icon), revealed on hover
   afterTitle?: React.ReactNode
+  /** Render as a non-navigation section heading with an optional trailing action. */
+  sectionHeader?: boolean
 }
 
 export interface SeparatorItem {
@@ -206,6 +208,16 @@ export function LeftSidebar({ links, isCollapsed, getItemProps, focusedItemId, i
           }
 
           const link = item
+
+          if (link.sectionHeader) {
+            return (
+              <div key={link.id} className="flex items-center px-2 py-[5px] text-[12px] text-foreground/45">
+                <span className="min-w-0 flex-1 truncate">{link.title}</span>
+                {link.afterTitle}
+              </div>
+            )
+          }
+
           const itemProps = getItemProps?.(link.id)
           const isFocused = focusedItemId === link.id
 
@@ -502,7 +514,7 @@ const SidebarButton = React.forwardRef<HTMLButtonElement, SidebarButtonProps & R
         )}
       >
         {/* Icon container with hover toggle for expandable items */}
-        <span className="relative h-3.5 w-3.5 shrink-0 flex items-center justify-center">
+        {(link.icon || link.expandable) && <span className="relative h-3.5 w-3.5 shrink-0 flex items-center justify-center">
           {link.expandable && !isOverlay ? (
             <>
               {/* Main icon - hidden on hover */}
@@ -530,8 +542,8 @@ const SidebarButton = React.forwardRef<HTMLButtonElement, SidebarButtonProps & R
           ) : (
             renderIcon(link)
           )}
-        </span>
-        {link.title}
+        </span>}
+        <span className="min-w-0 truncate">{link.title}</span>
         {/* After-title element: type indicator icon, right-aligned before count badge, revealed on hover */}
         {link.afterTitle && (
           <span data-touch-reveal="true" className="ml-auto opacity-0 group-hover/section:opacity-100 group-data-[state=open]:opacity-100 group-data-[edit-active=true]:opacity-100 transition-opacity">
@@ -554,6 +566,7 @@ const SidebarButton = React.forwardRef<HTMLButtonElement, SidebarButtonProps & R
  * Colors are always applied via inline style (resolved CSS color strings from EntityColor).
  */
 function renderIcon(link: LinkItem) {
+  if (!link.icon) return null
   const isComponent = typeof link.icon === 'function' ||
     (typeof link.icon === 'object' && link.icon !== null && 'render' in link.icon)
   // Default color for items without explicit iconColor (foreground at 60% opacity)

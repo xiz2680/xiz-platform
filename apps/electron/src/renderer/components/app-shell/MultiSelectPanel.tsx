@@ -22,7 +22,7 @@ import {
   StyledDropdownMenuSubTrigger,
   DropdownMenuSub,
 } from '@/components/ui/styled-dropdown'
-import type { LabelConfig } from '@craft-agent/shared/labels'
+import type { LabelConfig } from '@xiz-platform/shared/labels'
 import { LabelMenuItems } from './SessionMenuParts'
 
 type MultiSelectEntityType = 'automation' | 'session' | 'skill' | 'source'

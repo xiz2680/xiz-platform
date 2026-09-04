@@ -1,17 +1,17 @@
 /**
- * @craft-agent/shared
+ * @xiz-platform/shared
  *
- * Shared business logic for Craft Agent.
+ * Shared business logic for XIZ Platform.
  * Used by the Electron app.
  *
  * Import specific modules via subpath exports:
- *   import { CraftAgent } from '@craft-agent/shared/agent';
- *   import { loadStoredConfig } from '@craft-agent/shared/config';
- *   import { getCredentialManager } from '@craft-agent/shared/credentials';
- *   import { CraftMcpClient } from '@craft-agent/shared/mcp';
- *   import { debug } from '@craft-agent/shared/utils';
- *   import { loadSource, createSource, getSourceCredentialManager } from '@craft-agent/shared/sources';
- *   import { createWorkspace, loadWorkspace } from '@craft-agent/shared/workspaces';
+ *   import { CraftAgent } from '@xiz-platform/shared/agent';
+ *   import { loadStoredConfig } from '@xiz-platform/shared/config';
+ *   import { getCredentialManager } from '@xiz-platform/shared/credentials';
+ *   import { CraftMcpClient } from '@xiz-platform/shared/mcp';
+ *   import { debug } from '@xiz-platform/shared/utils';
+ *   import { loadSource, createSource, getSourceCredentialManager } from '@xiz-platform/shared/sources';
+ *   import { createWorkspace, loadWorkspace } from '@xiz-platform/shared/workspaces';
  *
  * Available modules:
  *   - agent: CraftAgent SDK wrapper, plan tools

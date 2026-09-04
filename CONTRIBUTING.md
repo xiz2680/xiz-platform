@@ -1,6 +1,6 @@
-# Contributing to Craft Agents
+# Contributing to XIZ Platform
 
-Thank you for your interest in contributing to Craft Agents! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to XIZ Platform! This document provides guidelines and instructions for contributing.
 
 ## Getting Started
 
@@ -98,9 +98,9 @@ craft-agents/
 │   ├── electron/    # Desktop GUI (primary interface)
 │   └── tui/         # Terminal CLI (deprecated)
 └── packages/
-    ├── core/        # @craft-agent/core - Shared types
-    ├── shared/      # @craft-agent/shared - Business logic
-    └── ui/          # @craft-agent/ui - React components
+    ├── core/        # @xiz-platform/core - Shared types
+    ├── shared/      # @xiz-platform/shared - Business logic
+    └── ui/          # @xiz-platform/ui - React components
 ```
 
 ## Key Areas

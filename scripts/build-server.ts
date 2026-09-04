@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Build script for standalone Craft Agent server.
+ * Build script for standalone XIZ Platform server.
  *
  * Assembles a self-contained distribution directory with all runtime
  * dependencies, resources, and platform-specific binaries.
@@ -81,7 +81,7 @@ interface ServerBuildConfig {
 
 function showHelp(): void {
   console.log(`
-Standalone server build script for Craft Agent
+Standalone server build script for XIZ Platform
 
 Usage:
   bun run scripts/build-server.ts [options]
@@ -309,7 +309,7 @@ function copyDependencyTree(
 /**
  * Scan all .ts files in a directory tree for import/require statements
  * and return the set of external npm package names (not relative paths,
- * not node: builtins, not workspace @craft-agent/* packages).
+ * not node: builtins, not workspace @xiz-platform/* packages).
  */
 function scanImports(dir: string): Set<string> {
   const packages = new Set<string>();
@@ -328,7 +328,7 @@ function scanImports(dir: string): Set<string> {
         while ((match = importRe.exec(content)) !== null) {
           const spec = match[1]!;
           // Skip relative imports, node: builtins, workspace packages
-          if (spec.startsWith('.') || spec.startsWith('node:') || spec.startsWith('@craft-agent/')) continue;
+          if (spec.startsWith('.') || spec.startsWith('node:') || spec.startsWith('@xiz-platform/')) continue;
           // Extract package name (handle scoped: @scope/name)
           const parts = spec.split('/');
           const pkgName = spec.startsWith('@') ? `${parts[0]}/${parts[1]}` : parts[0]!;
@@ -505,7 +505,7 @@ function copyWorkspacePackages(config: ServerBuildConfig): void {
 function createRootConfig(config: ServerBuildConfig): void {
   const { outputDir, version } = config;
 
-  // Root package.json with workspaces (Bun resolves @craft-agent/* through this)
+  // Root package.json with workspaces (Bun resolves @xiz-platform/* through this)
   const rootPkg = {
     name: 'craft-server-dist',
     version,
@@ -521,16 +521,16 @@ function createRootConfig(config: ServerBuildConfig): void {
       module: 'ESNext',
       moduleResolution: 'bundler',
       paths: {
-        '@craft-agent/server-core/*': ['./packages/server-core/src/*'],
-        '@craft-agent/shared/*': ['./packages/shared/src/*'],
-        '@craft-agent/core/*': ['./packages/core/src/*'],
-        '@craft-agent/session-tools-core/*': ['./packages/session-tools-core/src/*'],
+        '@xiz-platform/server-core/*': ['./packages/server-core/src/*'],
+        '@xiz-platform/shared/*': ['./packages/shared/src/*'],
+        '@xiz-platform/core/*': ['./packages/core/src/*'],
+        '@xiz-platform/session-tools-core/*': ['./packages/session-tools-core/src/*'],
       },
     },
   };
   writeFileSync(join(outputDir, 'tsconfig.json'), JSON.stringify(rootTsconfig, null, 2) + '\n');
 
-  // Create workspace symlinks in node_modules/@craft-agent/
+  // Create workspace symlinks in node_modules/@xiz-platform/
   // Bun needs these to resolve workspace package imports at runtime
   const scopeDir = join(outputDir, 'node_modules', '@craft-agent');
   mkdirSync(scopeDir, { recursive: true });
@@ -544,8 +544,8 @@ function createRootConfig(config: ServerBuildConfig): void {
       try {
         const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf-8'));
         const name: string = pkgJson.name || '';
-        if (name.startsWith('@craft-agent/')) {
-          const shortName = name.replace('@craft-agent/', '');
+        if (name.startsWith('@xiz-platform/')) {
+          const shortName = name.replace('@xiz-platform/', '');
           const linkPath = join(scopeDir, shortName);
           const target = join('..', '..', 'packages', pkg);
           if (!existsSync(linkPath)) {
@@ -597,7 +597,7 @@ exec "$ROOT/vendor/bun/bun" run "$ROOT/packages/server/src/index.ts" "$@"
 
   // start.sh — convenience entry
   const startSh = `#!/bin/sh
-# Craft Agent Server — convenience entry point
+# XIZ Platform Server — convenience entry point
 DIR="$(cd "$(dirname "$0")" && pwd)"
 exec "$DIR/bin/craft-server" "$@"
 `;
@@ -609,7 +609,7 @@ set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "=== Craft Agent Server Setup ==="
+echo "=== XIZ Platform Server Setup ==="
 echo ""
 
 # Make binaries executable
@@ -655,7 +655,7 @@ if [ "\${1:-}" = "--systemd" ]; then
 
   cat > "$SERVICE_FILE" <<UNIT
 [Unit]
-Description=Craft Agent Server
+Description=XIZ Platform Server
 After=network.target
 
 [Service]
@@ -824,7 +824,7 @@ async function main(): Promise<void> {
     version,
   };
 
-  console.log(`=== Building Craft Agent Server ${version} for ${platform}-${arch} ===`);
+  console.log(`=== Building XIZ Platform Server ${version} for ${platform}-${arch} ===`);
   console.log(`  Output: ${outputDir}`);
 
   // Step 1: Clean

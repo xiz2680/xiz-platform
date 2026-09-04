@@ -1,7 +1,7 @@
 {
-  "name": "@craft-agent/server",
+  "name": "@xiz-platform/server",
   "version": "0.13.1",
-  "description": "Standalone headless Craft Agent server (Bun runtime)",
+  "description": "Standalone headless XIZ Platform server (Bun runtime)",
   "type": "module",
   "main": "src/index.ts",
   "bin": {
@@ -18,17 +18,17 @@
     "email": "support@craft.do"
   },
   "license": "Apache-2.0",
-  "homepage": "https://thecraftagents.com",
+  "homepage": "https://github.com/xiz2680/xiz-platform",
   "scripts": {
     "start": "bun run src/index.ts",
     "generate-token": "bun run src/index.ts --generate-token",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@craft-agent/core": "workspace:*",
-    "@craft-agent/messaging-gateway": "workspace:*",
-    "@craft-agent/server-core": "workspace:*",
-    "@craft-agent/shared": "workspace:*"
+    "@xiz-platform/core": "workspace:*",
+    "@xiz-platform/messaging-gateway": "workspace:*",
+    "@xiz-platform/server-core": "workspace:*",
+    "@xiz-platform/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.8.2",

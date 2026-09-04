@@ -1,19 +1,19 @@
-# @craft-agent/core
+# @xiz-platform/core
 
-Shared TypeScript types and utilities for Craft Agent applications.
+Shared TypeScript types and utilities for XIZ Platform applications.
 
 ## Installation
 
 ```bash
 # In a workspace package
-bun add @craft-agent/core
+bun add @xiz-platform/core
 ```
 
 Or add to `package.json`:
 ```json
 {
   "dependencies": {
-    "@craft-agent/core": "workspace:*"
+    "@xiz-platform/core": "workspace:*"
   }
 }
 ```
@@ -28,10 +28,10 @@ import type {
   Message,
   TokenUsage,
   AgentEvent,
-} from '@craft-agent/core';
+} from '@xiz-platform/core';
 
 // Import utilities
-import { generateMessageId, debug } from '@craft-agent/core';
+import { generateMessageId, debug } from '@xiz-platform/core';
 ```
 
 ## Exported Types

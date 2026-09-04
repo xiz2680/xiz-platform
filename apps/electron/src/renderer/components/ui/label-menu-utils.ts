@@ -1,5 +1,5 @@
-import type { LabelConfig } from '@craft-agent/shared/labels'
-import { flattenLabelsWithParentPath } from '@craft-agent/shared/labels'
+import type { LabelConfig } from '@xiz-platform/shared/labels'
+import { flattenLabelsWithParentPath } from '@xiz-platform/shared/labels'
 
 export interface LabelMenuItem {
   id: string

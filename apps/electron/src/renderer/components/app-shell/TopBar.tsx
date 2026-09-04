@@ -9,7 +9,7 @@
 
 import { useTranslation } from "react-i18next"
 import * as Icons from "lucide-react"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@craft-agent/ui"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@xiz-platform/ui"
 import { PanelLeftRounded } from "../icons/PanelLeftRounded"
 import { TopBarButton } from "../ui/TopBarButton"
 import { cn } from "@/lib/utils"
@@ -29,7 +29,7 @@ import { BrowserTabStrip } from "../browser/BrowserTabStrip"
 import type { Workspace } from "../../../shared/types"
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher"
 import { CompactWorkspaceSwitcher } from "./CompactWorkspaceSwitcher"
-import { getDocUrl } from "@craft-agent/shared/docs/doc-links"
+import { getDocUrl } from "@xiz-platform/shared/docs/doc-links"
 import { AppMenu } from "../AppMenu"
 
 const RIGHT_SLOT_FULL_BADGES_THRESHOLD = 420
@@ -49,6 +49,7 @@ interface TopBarProps {
   onOpenSettingsSubpage: (subpage: SettingsMenuItem['id']) => void
   onOpenKeyboardShortcuts: () => void
   onOpenStoredUserPreferences: () => void
+  onOpenLabels: () => void
   onBack: () => void
   onForward: () => void
   canGoBack: boolean
@@ -75,6 +76,7 @@ export function TopBar({
   onOpenSettingsSubpage,
   onOpenKeyboardShortcuts,
   onOpenStoredUserPreferences,
+  onOpenLabels,
   onBack,
   onForward,
   canGoBack,
@@ -218,6 +220,16 @@ export function TopBar({
               />
             )}
           </div>
+          {!isCompact && (
+            <button
+              type="button"
+              onClick={onOpenLabels}
+              className="titlebar-no-drag inline-flex h-[30px] shrink-0 items-center gap-1.5 rounded-[8px] px-2 text-[13px] text-foreground/50 transition-colors hover:bg-foreground/5 hover:text-foreground"
+            >
+              <Icons.Tag className="h-3.5 w-3.5" />
+              {t('sidebar.labels')}
+            </button>
+          )}
         </div>
       </div>
 
