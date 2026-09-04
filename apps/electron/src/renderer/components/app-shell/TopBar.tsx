@@ -1,7 +1,7 @@
 /**
  * TopBar - Persistent top bar above all panels (Slack-style)
  *
- * Layout: [Sidebar] [Menu] [Back] [Forward] [Workspace selector] ... [Browser strip] [+] [Help]
+ * Layout: [Sidebar] [Menu] [Back] [Forward] [Workspace selector] ... [Browser strip] [Help] [+]
  *
  * Fixed at top of window, 48px tall.
  * macOS: offset left to avoid stoplight controls.
@@ -233,34 +233,16 @@ export function TopBar({
         </div>
       </div>
 
-      {/* === RIGHT: Browser strip + add + help === */}
+      {/* === RIGHT: Browser strip + help + add === */}
       {!isCompact && (
       <div ref={rightSlotRef} className="flex min-w-0 shrink-0 items-center justify-end gap-1" style={{ paddingRight: 12 }}>
         <div className="min-w-0">
           <BrowserTabStrip activeSessionId={activeSessionId} maxVisibleBadges={maxVisibleBrowserBadges} />
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <TopBarButton aria-label={t("menu.addPanelMenu")} className="ml-1 h-[26px] w-[26px] rounded-lg">
-              <Icons.Plus className="h-4 w-4 text-foreground/50" strokeWidth={1.5} />
-            </TopBarButton>
-          </DropdownMenuTrigger>
-          <StyledDropdownMenuContent align="end" minWidth="min-w-56">
-            <StyledDropdownMenuItem onClick={onAddSessionPanel}>
-              <SquarePenRounded className="h-3.5 w-3.5" />
-              {t("session.newSessionInPanel")}
-            </StyledDropdownMenuItem>
-            <StyledDropdownMenuItem onClick={onAddBrowserPanel}>
-              <Icons.Globe className="h-3.5 w-3.5" />
-              {t("browser.newWindow")}
-            </StyledDropdownMenuItem>
-          </StyledDropdownMenuContent>
-        </DropdownMenu>
-
         {/* Help button */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <TopBarButton aria-label={t("menu.helpAndDocs")} className="h-[26px] w-[26px] rounded-lg">
+            <TopBarButton aria-label={t("menu.helpAndDocs")} className="ml-1 h-[26px] w-[26px] rounded-lg">
               <Icons.HelpCircle className="h-4 w-4 text-foreground/50" strokeWidth={1.5} />
             </TopBarButton>
           </DropdownMenuTrigger>
@@ -299,6 +281,24 @@ export function TopBar({
             <StyledDropdownMenuItem onClick={() => window.electronAPI.openUrl('https://thecraftagents.com/docs')}>
               <Icons.ExternalLink className="h-3.5 w-3.5" />
               <span className="flex-1">{t("menu.allDocumentation")}</span>
+            </StyledDropdownMenuItem>
+          </StyledDropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <TopBarButton aria-label={t("menu.addPanelMenu")} className="h-[26px] w-[26px] rounded-lg">
+              <Icons.Plus className="h-4 w-4 text-foreground/50" strokeWidth={1.5} />
+            </TopBarButton>
+          </DropdownMenuTrigger>
+          <StyledDropdownMenuContent align="end" minWidth="min-w-56">
+            <StyledDropdownMenuItem onClick={onAddSessionPanel}>
+              <SquarePenRounded className="h-3.5 w-3.5" />
+              {t("session.newSessionInPanel")}
+            </StyledDropdownMenuItem>
+            <StyledDropdownMenuItem onClick={onAddBrowserPanel}>
+              <Icons.Globe className="h-3.5 w-3.5" />
+              {t("browser.newWindow")}
             </StyledDropdownMenuItem>
           </StyledDropdownMenuContent>
         </DropdownMenu>
