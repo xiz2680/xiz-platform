@@ -19,10 +19,10 @@
     "noUnusedParameters": false,
     "baseUrl": ".",
     "paths": {
-      "@craft-agent/shared": ["../../packages/shared/src/index.ts"],
-      "@craft-agent/shared/*": ["../../packages/shared/src/*"],
-      "@craft-agent/server-core": ["../../packages/server-core/src/index.ts"],
-      "@craft-agent/server-core/*": ["../../packages/server-core/src/*"]
+      "@xiz-platform/shared": ["../../packages/shared/src/index.ts"],
+      "@xiz-platform/shared/*": ["../../packages/shared/src/*"],
+      "@xiz-platform/server-core": ["../../packages/server-core/src/index.ts"],
+      "@xiz-platform/server-core/*": ["../../packages/server-core/src/*"]
     }
   },
   "include": ["src/**/*", "../../packages/shared/src/**/*.d.ts"],

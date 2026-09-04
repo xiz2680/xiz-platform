@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * @craft-agent/server — standalone headless Craft Agent server.
+ * @xiz-platform/server — standalone headless XIZ Platform server.
  *
  * Usage:
  *   CRAFT_SERVER_TOKEN=<secret> bun run packages/server/src/index.ts
@@ -29,25 +29,25 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { readFileSync, existsSync } from 'node:fs'
 import { version as packageVersion } from '../package.json'
-import { enableDebug } from '@craft-agent/shared/utils/debug'
-import { bootstrapServer, startHealthHttpServer, generateServerToken } from '@craft-agent/server-core/bootstrap'
-import { validateSession, createWebuiHandler, nodeHttpAdapter } from '@craft-agent/server-core/webui'
-import type { WebuiHandler } from '@craft-agent/server-core/webui'
-import { getCredentialManager } from '@craft-agent/shared/credentials'
-import { getWorkspaces } from '@craft-agent/shared/config'
-import { createMessagingBootstrap, type MessagingBootstrapHandle } from '@craft-agent/messaging-gateway'
+import { enableDebug } from '@xiz-platform/shared/utils/debug'
+import { bootstrapServer, startHealthHttpServer, generateServerToken } from '@xiz-platform/server-core/bootstrap'
+import { validateSession, createWebuiHandler, nodeHttpAdapter } from '@xiz-platform/server-core/webui'
+import type { WebuiHandler } from '@xiz-platform/server-core/webui'
+import { getCredentialManager } from '@xiz-platform/shared/credentials'
+import { getWorkspaces } from '@xiz-platform/shared/config'
+import { createMessagingBootstrap, type MessagingBootstrapHandle } from '@xiz-platform/messaging-gateway'
 
 // --generate-token: print a crypto-random token and exit
 if (process.argv.includes('--generate-token')) {
   console.log(generateServerToken())
   process.exit(0)
 }
-import type { WsRpcTlsOptions } from '@craft-agent/server-core/transport'
-import { registerCoreRpcHandlers, cleanupSessionFileWatchForClient } from '@craft-agent/server-core/handlers/rpc'
-import { SessionManager, setSessionPlatform, setSessionRuntimeHooks } from '@craft-agent/server-core/sessions'
-import { initModelRefreshService, setFetcherPlatform } from '@craft-agent/server-core/model-fetchers'
-import { setSearchPlatform, setImageProcessor } from '@craft-agent/server-core/services'
-import type { HandlerDeps } from '@craft-agent/server-core/handlers'
+import type { WsRpcTlsOptions } from '@xiz-platform/server-core/transport'
+import { registerCoreRpcHandlers, cleanupSessionFileWatchForClient } from '@xiz-platform/server-core/handlers/rpc'
+import { SessionManager, setSessionPlatform, setSessionRuntimeHooks } from '@xiz-platform/server-core/sessions'
+import { initModelRefreshService, setFetcherPlatform } from '@xiz-platform/server-core/model-fetchers'
+import { setSearchPlatform, setImageProcessor } from '@xiz-platform/server-core/services'
+import type { HandlerDeps } from '@xiz-platform/server-core/handlers'
 
 process.env.CRAFT_IS_PACKAGED ??= 'false'
 
@@ -279,15 +279,15 @@ if (messagingHandle !== null && !messagingDisabled) {
 
 // Wire up the lazy health check now that the session manager is ready
 if (webuiHandler) {
-  const { getHealthCheck } = await import('@craft-agent/server-core/handlers/rpc/server')
+  const { getHealthCheck } = await import('@xiz-platform/server-core/handlers/rpc/server')
   const depsLike = { sessionManager: instance.sessionManager } as any
   healthCheckFn = () => getHealthCheck(depsLike)
 
   // Wire up OAuth callback deps so /api/oauth/callback works
-  const { getSourceCredentialManager, loadWorkspaceSources } = await import('@craft-agent/shared/sources')
-  const { getWorkspaceByNameOrId } = await import('@craft-agent/shared/config')
-  const { pushTyped } = await import('@craft-agent/server-core/transport')
-  const { RPC_CHANNELS } = await import('@craft-agent/shared/protocol')
+  const { getSourceCredentialManager, loadWorkspaceSources } = await import('@xiz-platform/shared/sources')
+  const { getWorkspaceByNameOrId } = await import('@xiz-platform/shared/config')
+  const { pushTyped } = await import('@xiz-platform/server-core/transport')
+  const { RPC_CHANNELS } = await import('@xiz-platform/shared/protocol')
 
   webuiHandler.setOAuthCallbackDeps({
     flowStore: instance.oauthFlowStore,

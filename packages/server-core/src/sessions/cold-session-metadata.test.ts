@@ -7,8 +7,8 @@ import {
   loadSession,
   writeSessionJsonl,
   type StoredSession,
-} from '@craft-agent/shared/sessions'
-import type { StoredMessage } from '@craft-agent/core/types'
+} from '@xiz-platform/shared/sessions'
+import type { StoredMessage } from '@xiz-platform/core/types'
 import { SessionManager, createManagedSession } from './SessionManager.ts'
 
 // Regression test for the silent-drop bug in persistSession:

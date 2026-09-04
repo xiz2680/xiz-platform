@@ -1,5 +1,5 @@
 /**
- * Utility functions for @craft-agent/ui
+ * Utility functions for @xiz-platform/ui
  */
 
 import { type ClassValue, clsx } from 'clsx'

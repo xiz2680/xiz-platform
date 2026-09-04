@@ -10,8 +10,8 @@ import type {
   PageDataSnapshot,
   PageKind,
   PageRenderLease,
-} from '@craft-agent/shared/pages/types'
-import { isPageGrantUsable } from '@craft-agent/shared/pages/types'
+} from '@xiz-platform/shared/pages/types'
+import { isPageGrantUsable } from '@xiz-platform/shared/pages/types'
 import {
   PageActionRateLimiter,
   buildPageActionResultMessage,

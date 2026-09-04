@@ -64,7 +64,7 @@ import {
   createLabelMenuItems,
   type LabelMenuItem,
 } from '@/components/ui/label-menu-utils'
-import type { LabelConfig } from '@craft-agent/shared/labels'
+import type { LabelConfig } from '@xiz-platform/shared/labels'
 import { type SessionStatus, type SessionStatusId } from '@/config/session-status-config'
 import type { SessionMeta } from '@/atoms/sessions'
 import { hasUnreadMeta, hasMessagesMeta } from '@/utils/session'

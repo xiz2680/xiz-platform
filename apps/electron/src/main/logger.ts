@@ -6,7 +6,7 @@ import type {
   MessagingLogContext,
   MessagingLogMeta,
   MessagingLogger,
-} from '@craft-agent/messaging-gateway'
+} from '@xiz-platform/messaging-gateway'
 
 /**
  * Resolve debug mode deterministically across runtimes.

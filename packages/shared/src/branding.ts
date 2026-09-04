@@ -1,5 +1,5 @@
 /**
- * Centralized branding assets for Craft Agent
+ * Centralized branding assets for XIZ Platform
  * Used by OAuth callback pages
  */
 

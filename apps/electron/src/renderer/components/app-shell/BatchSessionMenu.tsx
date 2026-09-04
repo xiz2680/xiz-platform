@@ -19,7 +19,7 @@ import { useSelectedIds } from '@/hooks/useSession'
 import { useSessionSelection } from '@/hooks/useSession'
 import { sessionMetaMapAtom, sendToWorkspaceAtom, type SessionMeta } from '@/atoms/sessions'
 import { useAppShellContext } from '@/context/AppShellContext'
-import { extractLabelId } from '@craft-agent/shared/labels'
+import { extractLabelId } from '@xiz-platform/shared/labels'
 import { LabelMenuItems } from './SessionMenuParts'
 import { hasTransferTargets } from './transfer-targets'
 

@@ -47,7 +47,7 @@ export default [
       '@typescript-eslint': tsPlugin,
       react: reactPlugin,
       'react-hooks': reactHooksPlugin,
-      // Custom plugin for Craft Agent rules
+      // Custom plugin for XIZ Platform rules
       'craft-agent': {
         rules: {
           'no-direct-navigation-state': noDirectNavigationState,
@@ -96,7 +96,7 @@ export default [
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
 
-      // Custom Craft Agent rules
+      // Custom XIZ Platform rules
       'craft-agent/no-direct-navigation-state': 'error',
       'craft-agent/no-localstorage': 'warn',
 
@@ -166,16 +166,16 @@ export default [
       'no-restricted-imports': ['error', {
         paths: [
           {
-            name: '@craft-agent/shared/codex',
-            message: 'Use provider-agnostic APIs from @craft-agent/shared/agent/backend instead.',
+            name: '@xiz-platform/shared/codex',
+            message: 'Use provider-agnostic APIs from @xiz-platform/shared/agent/backend instead.',
           },
           {
-            name: '@craft-agent/shared/agent/claude-agent',
-            message: 'Provider backends must stay behind @craft-agent/shared/agent/backend.',
+            name: '@xiz-platform/shared/agent/claude-agent',
+            message: 'Provider backends must stay behind @xiz-platform/shared/agent/backend.',
           },
           {
-            name: '@craft-agent/shared/agent/pi-agent',
-            message: 'Provider backends must stay behind @craft-agent/shared/agent/backend.',
+            name: '@xiz-platform/shared/agent/pi-agent',
+            message: 'Provider backends must stay behind @xiz-platform/shared/agent/backend.',
           },
         ],
       }],
@@ -189,7 +189,7 @@ export default [
       'no-restricted-syntax': ['error',
         {
           selector: "CallExpression[callee.name='fetch']",
-          message: 'Do not call provider APIs directly in Electron model fetchers. Delegate to fetchBackendModels() from @craft-agent/shared/agent/backend.',
+          message: 'Do not call provider APIs directly in Electron model fetchers. Delegate to fetchBackendModels() from @xiz-platform/shared/agent/backend.',
         },
         {
           selector: "ImportDeclaration[source.value='@anthropic-ai/claude-agent-sdk']",

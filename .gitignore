@@ -55,7 +55,7 @@ __pycache__/
 # Lock files from other package managers
 pnpm-lock.yaml
 
-# Craft Agent local data (sessions, credentials, config)
+# XIZ Platform local data (sessions, credentials, config)
 .craft-agent/
 
 # SSH keys and secrets
@@ -72,3 +72,6 @@ credentials.enc
 # act (local GitHub Actions runner)
 .secrets
 .actrc
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+graft/

@@ -1,8 +1,13 @@
 {
-  "name": "craft-agent",
+  "name": "xiz-platform",
   "version": "0.13.1",
   "license": "Apache-2.0",
-  "description": "Claude Code-like agent for Craft documents",
+  "description": "Open-source desktop platform for working with AI agents",
+  "homepage": "https://github.com/xiz2680/xiz-platform",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiz2680/xiz-platform.git"
+  },
   "type": "module",
   "private": true,
   "trustedDependencies": [
@@ -68,7 +73,7 @@
     "electron:dev": "bun run scripts/electron-dev.ts",
     "electron:dev:terminal": "bun run scripts/electron-dev.ts --terminal",
     "electron:dev:menu": "bash scripts/electron-dev.sh",
-    "electron:dev:logs": "pgrep -f 'tail -f.*@craft-agent/electron/main.log' > /dev/null || osascript -e \"tell application \\\"Terminal\\\" to do script \\\"$PWD/scripts/tail-electron-logs.sh\\\"\"",
+    "electron:dev:logs": "pgrep -f 'tail -f.*@xiz-platform/electron/main.log' > /dev/null || osascript -e \"tell application \\\"Terminal\\\" to do script \\\"$PWD/scripts/tail-electron-logs.sh\\\"\"",
     "sync-secrets": "bash scripts/sync-secrets.sh",
     "fresh-start": "bun run scripts/fresh-start.ts",
     "fresh-start:token": "bun run scripts/fresh-start.ts --token-only",
