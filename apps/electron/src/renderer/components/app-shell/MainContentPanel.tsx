@@ -37,13 +37,11 @@ import {
 import { useSessionSelection, useIsMultiSelectActive, useSelectedIds, useSelectionCount } from '@/hooks/useSession'
 import { sourceSelection, skillSelection, automationSelection } from '@/hooks/useEntitySelection'
 import { extractLabelId } from '@craft-agent/shared/labels'
-import type { SessionStatusId } from '@/config/session-status-config'
 import { SourceInfoPage, ChatPage } from '@/pages'
 import SkillInfoPage from '@/pages/SkillInfoPage'
 import { getSettingsPageComponent } from '@/pages/settings/settings-pages'
 import { AutomationInfoPage } from '../automations/AutomationInfoPage'
 import ProjectInfoPage from '@/pages/ProjectInfoPage'
-import { KanbanBoardContainer } from './kanban/KanbanBoardContainer'
 import { PagesHome } from '../pages/PagesHome'
 import { PageView } from '../pages/PageView'
 import type { ExecutionEntry } from '../automations/types'
@@ -74,10 +72,8 @@ export function MainContentPanel({
   const {
     activeWorkspaceId,
     workspaces,
-    onSessionStatusChange,
     onArchiveSession,
     onSessionLabelsChange,
-    sessionStatuses,
     labels,
     onTestAutomation,
     onToggleAutomation,
@@ -167,13 +163,6 @@ export function MainContentPanel({
     return metas
   }, [selectedIds, sessionMetaMap])
 
-  const activeStatusId = useMemo((): SessionStatusId | null => {
-    if (selectedMetas.length === 0) return null
-    const first = (selectedMetas[0].sessionStatus || 'todo') as SessionStatusId
-    const allSame = selectedMetas.every(meta => (meta.sessionStatus || 'todo') === first)
-    return allSame ? first : null
-  }, [selectedMetas])
-
   const appliedLabelIds = useMemo(() => {
     if (selectedMetas.length === 0) return new Set<string>()
     const toLabelSet = (meta: SessionMeta) =>
@@ -189,12 +178,6 @@ export function MainContentPanel({
   }, [selectedMetas])
 
   // Batch operations for multi-select
-  const handleBatchSetStatus = useCallback((status: SessionStatusId) => {
-    selectedIds.forEach(sessionId => {
-      onSessionStatusChange(sessionId, status)
-    })
-  }, [selectedIds, onSessionStatusChange])
-
   const handleBatchArchive = useCallback(() => {
     selectedIds.forEach(sessionId => {
       onArchiveSession(sessionId)
@@ -395,24 +378,12 @@ export function MainContentPanel({
 
   // Chats navigator - show chat, multi-select panel, or empty state
   if (isSessionsNavigation(navState)) {
-    // Board view: full-width Kanban over all sessions (placement independent of status)
-    if (navState.viewMode === 'board') {
-      return wrapWithStoplight(
-        <Panel variant="grow" className={className}>
-          <KanbanBoardContainer />
-        </Panel>
-      )
-    }
-
     // Multi-select mode: show batch actions panel
     if (isMultiSelectActive) {
       return wrapWithStoplight(
         <Panel variant="grow" className={className}>
           <MultiSelectPanel
             count={selectionCount}
-            sessionStatuses={sessionStatuses}
-            activeStatusId={activeStatusId}
-            onSetStatus={handleBatchSetStatus}
             labels={labels}
             appliedLabelIds={appliedLabelIds}
             onToggleLabel={handleBatchToggleLabel}
