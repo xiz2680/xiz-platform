@@ -38,7 +38,6 @@ import {
 // SessionStatusIcons no longer used - icons come from dynamic sessionStatuses
 import { SourceAvatar } from "@/components/ui/source-avatar"
 import { TopBar } from "./TopBar"
-import { ProjectBrowserPanel } from "../browser/ProjectBrowserPanel"
 import { SquarePenRounded } from "../icons/SquarePenRounded"
 import { McpIcon } from "../icons/McpIcon"
 import { cn } from "@/lib/utils"
@@ -1463,10 +1462,6 @@ function AppShellContent({
   // redundant for both a project detail page and one of its conversations.
   const isProjectFocusedView = focusedProjectId !== null
   const isSessionDetailView = isSessionsNavigation(navState) && !!navState.details
-  const [browserProjectId, setBrowserProjectId] = useState<string | null>(null)
-  useEffect(() => {
-    if (browserProjectId && browserProjectId !== focusedProjectId) setBrowserProjectId(null)
-  }, [browserProjectId, focusedProjectId])
 
   // Count sources by type for the Sources dropdown subcategories
   const sourceTypeCounts = useMemo(() => {
@@ -2270,8 +2265,14 @@ function AppShellContent({
             if (focusedProjectId) navigate(routes.action.newSession({ project: focusedProjectId }), { newPanel: true })
           }}
           canAddProjectPanel={focusedProjectId !== null}
-          onAddBrowserPanel={() => {
-            if (focusedProjectId) setBrowserProjectId(focusedProjectId)
+          onAddBrowserPanel={async () => {
+            try {
+              const id = await window.electronAPI.browserPane.create({ show: true })
+              await window.electronAPI.browserPane.focus(id)
+            } catch (error) {
+              console.error('[Browser] Failed to open window:', error)
+              toast.error(t('toast.failedToCreateBrowser'))
+            }
           }}
           isCompact={isAutoCompact}
         />
@@ -3341,21 +3342,6 @@ function AppShellContent({
           isCompact={isAutoCompact}
           isResizing={!!isResizing}
         />
-
-        {browserProjectId && browserProjectId === focusedProjectId && (
-          <div
-            className="h-full shrink-0 overflow-hidden rounded-[8px] bg-background shadow-middle"
-            style={{ width: 'clamp(320px, 40vw, 560px)' }}
-          >
-            <ProjectBrowserPanel
-              projectId={browserProjectId}
-              sessionId={focusedSessionId}
-              initialUrl="about:blank"
-              className="h-full w-full"
-              onClose={() => setBrowserProjectId(null)}
-            />
-          </div>
-        )}
 
         {/* Sidebar Resize Handle (absolute, hidden in focused mode) */}
         {!effectiveSidebarAndNavigatorHidden && (

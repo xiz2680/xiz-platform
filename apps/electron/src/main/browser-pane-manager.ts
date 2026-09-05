@@ -16,7 +16,6 @@ import { BrowserCDP, type AccessibilitySnapshot, type ElementGeometry } from './
 import {
   type BrowserEmptyStateLaunchPayload,
   type BrowserEmptyStateLaunchResult,
-  type BrowserPaneBounds,
   type BrowserInstanceInfo,
 } from '../shared/types'
 import { DEFAULT_THEME, loadAppTheme, getAllowRemoteEvaluate } from '@xiz-platform/shared/config'
@@ -182,10 +181,6 @@ interface BrowserInstance {
   networkLogs: BrowserNetworkEntry[]
   downloads: BrowserDownloadEntry[]
   lastLaunchToken: string | null
-  /** Main app window currently hosting the native views, when rendered inline. */
-  embeddedHostWindow: BrowserWindow | null
-  embeddedBounds: BrowserPaneBounds | null
-  embeddedHostClosedListener: (() => void) | null
 }
 
 interface CreateBrowserInstanceOptions {
@@ -193,7 +188,6 @@ interface CreateBrowserInstanceOptions {
   ownerType?: 'session' | 'manual'
   ownerSessionId?: string
   workspaceId?: string | null
-  initialUrl?: string
 }
 
 export interface BrowserScreenshotOptions {
@@ -490,9 +484,6 @@ export class BrowserPaneManager implements IBrowserPaneManager {
       networkLogs: [],
       downloads: [],
       lastLaunchToken: null,
-      embeddedHostWindow: null,
-      embeddedBounds: null,
-      embeddedHostClosedListener: null,
     }
 
     const defaultUa = pageView.webContents.userAgent || ''
@@ -522,108 +513,12 @@ export class BrowserPaneManager implements IBrowserPaneManager {
           this.markToolbarReady(instance, 'toolbar-load-finalized')
         }
       })
-    const initialUrl = options?.initialUrl?.trim()
-    if (initialUrl) {
-      void this.navigate(instance.id, initialUrl).catch((error) => {
-        mainLog.warn(`[browser-pane] initial navigation failed id=${instance.id}: ${error instanceof Error ? error.message : String(error)}`)
-      })
-    } else {
-      void this.loadEmptyStatePage(instance).catch((error) => {
-        mainLog.warn(`[browser-pane] empty-state load failed id=${instance.id}: ${error instanceof Error ? error.message : String(error)}`)
-        void pageView.webContents.loadURL('about:blank')
-      })
-    }
+    void this.loadEmptyStatePage(instance).catch((error) => {
+      mainLog.warn(`[browser-pane] empty-state load failed id=${instance.id}: ${error instanceof Error ? error.message : String(error)}`)
+      void pageView.webContents.loadURL('about:blank')
+    })
 
     return instanceId
-  }
-
-  /**
-   * Reparents an existing browser instance's native views into the requesting
-   * app window. The hidden BrowserWindow remains the lifetime owner so all
-   * existing browser automation and security behavior stays unchanged.
-   */
-  attachEmbedded(id: string, hostWebContentsId: number, bounds: BrowserPaneBounds): void {
-    const instance = this.requireAliveInstance(id)
-    const hostWindow = this.windowManager?.getWindowByWebContentsId(hostWebContentsId) ?? null
-    if (!hostWindow || hostWindow.isDestroyed()) {
-      throw new Error(`Browser embed host window not found: ${hostWebContentsId}`)
-    }
-
-    const instanceWorkspaceId = instance.workspaceId
-    const hostWorkspaceId = this.windowManager?.getWorkspaceForWindow(hostWebContentsId) ?? null
-    if (instanceWorkspaceId && hostWorkspaceId && instanceWorkspaceId !== hostWorkspaceId) {
-      throw new Error('Cannot embed a browser instance from another workspace')
-    }
-
-    if (instance.embeddedHostWindow !== hostWindow) {
-      this.detachEmbeddedViews(instance, false)
-
-      // BrowserView is a native surface and can have only one owner at a time.
-      instance.window.removeBrowserView(instance.toolbarView)
-      instance.window.removeBrowserView(instance.nativeOverlayView)
-      instance.window.removeBrowserView(instance.pageView)
-      hostWindow.addBrowserView(instance.pageView)
-      hostWindow.addBrowserView(instance.nativeOverlayView)
-      hostWindow.addBrowserView(instance.toolbarView)
-
-      const onHostClosed = () => {
-        if (this.instances.has(instance.id)) this.destroyInstance(instance.id)
-      }
-      instance.embeddedHostWindow = hostWindow
-      instance.embeddedHostClosedListener = onHostClosed
-      hostWindow.once('closed', onHostClosed)
-    }
-
-    instance.embeddedBounds = this.normalizeEmbeddedBounds(hostWindow, bounds)
-    instance.isVisible = true
-    this.layoutAllViews(instance)
-    this.emitStateChange(instance)
-    mainLog.info(`[browser-pane] Embedded instance id=${id} host=${hostWebContentsId}`)
-  }
-
-  setEmbeddedBounds(id: string, hostWebContentsId: number, bounds: BrowserPaneBounds): void {
-    const instance = this.requireAliveInstance(id)
-    const hostWindow = this.windowManager?.getWindowByWebContentsId(hostWebContentsId) ?? null
-    if (!hostWindow || instance.embeddedHostWindow !== hostWindow) {
-      throw new Error(`Browser instance ${id} is not embedded in this window`)
-    }
-    instance.embeddedBounds = this.normalizeEmbeddedBounds(hostWindow, bounds)
-    this.layoutAllViews(instance)
-  }
-
-  private normalizeEmbeddedBounds(hostWindow: BrowserWindow, bounds: BrowserPaneBounds): BrowserPaneBounds {
-    const [hostWidth, hostHeight] = hostWindow.getContentSize()
-    const finite = (value: number): number => Number.isFinite(value) ? Math.round(value) : 0
-    const x = Math.max(0, Math.min(finite(bounds.x), hostWidth))
-    const y = Math.max(0, Math.min(finite(bounds.y), hostHeight))
-    const width = Math.max(0, Math.min(finite(bounds.width), hostWidth - x))
-    const height = Math.max(0, Math.min(finite(bounds.height), hostHeight - y))
-    return { x, y, width, height }
-  }
-
-  private detachEmbeddedViews(instance: BrowserInstance, reattachToOwner: boolean): void {
-    const hostWindow = instance.embeddedHostWindow
-    if (!hostWindow) return
-
-    if (instance.embeddedHostClosedListener && !hostWindow.isDestroyed()) {
-      hostWindow.removeListener('closed', instance.embeddedHostClosedListener)
-    }
-    if (!hostWindow.isDestroyed()) {
-      hostWindow.removeBrowserView(instance.toolbarView)
-      hostWindow.removeBrowserView(instance.nativeOverlayView)
-      hostWindow.removeBrowserView(instance.pageView)
-    }
-
-    instance.embeddedHostWindow = null
-    instance.embeddedBounds = null
-    instance.embeddedHostClosedListener = null
-
-    if (reattachToOwner && !instance.window.isDestroyed()) {
-      instance.window.addBrowserView(instance.pageView)
-      instance.window.addBrowserView(instance.nativeOverlayView)
-      instance.window.addBrowserView(instance.toolbarView)
-      instance.window.setTopBrowserView(instance.toolbarView)
-    }
   }
 
   destroyInstance(id: string): void {
@@ -661,7 +556,6 @@ export class BrowserPaneManager implements IBrowserPaneManager {
     runCleanup('closePopupsForParent', () => this.closePopupsForParent(instance.id, 'parent_destroy'))
     runCleanup('applyAgentControlLock', () => this.applyAgentControlLock(instance, false))
     runCleanup('updateNativeOverlayState', () => this.updateNativeOverlayState(instance))
-    runCleanup('detachEmbeddedViews', () => this.detachEmbeddedViews(instance, true))
 
     try {
       if (!instance.window.isDestroyed()) {
@@ -899,19 +793,6 @@ export class BrowserPaneManager implements IBrowserPaneManager {
     const instance = this.instances.get(id)
     if (!instance) return
 
-    if (instance.embeddedHostWindow) {
-      const hostWindow = instance.embeddedHostWindow
-      if (!hostWindow.isDestroyed()) {
-        if (hostWindow.isMinimized()) hostWindow.restore()
-        hostWindow.show()
-        hostWindow.focus()
-        instance.pageView.webContents.focus()
-        instance.isVisible = true
-        this.emitStateChange(instance)
-      }
-      return
-    }
-
     const win = instance.window
     if (win.isDestroyed()) return
 
@@ -936,14 +817,6 @@ export class BrowserPaneManager implements IBrowserPaneManager {
   hide(id: string): void {
     const instance = this.instances.get(id)
     if (!instance) return
-
-    // The embedded pane has no independent window to hide. Treat the native
-    // toolbar close action as closing the panel and let renderer state follow
-    // the normal REMOVED event.
-    if (instance.embeddedHostWindow) {
-      this.destroyInstance(id)
-      return
-    }
 
     // Re-entrancy guard: bail if a hide is already in progress. Prevents the
     // 'close' listener from re-entering hide() during teardown, which can crash
@@ -1936,7 +1809,7 @@ export class BrowserPaneManager implements IBrowserPaneManager {
 
   createForSession(
     sessionId: string,
-    options?: { show?: boolean; allowReuseManual?: boolean; workspaceId?: string | null; initialUrl?: string },
+    options?: { show?: boolean; allowReuseManual?: boolean; workspaceId?: string | null },
   ): string {
     const workspaceId = options?.workspaceId ?? null
     const existing = this.getBoundForSession(sessionId)
@@ -1974,7 +1847,6 @@ export class BrowserPaneManager implements IBrowserPaneManager {
       ownerType: 'session',
       ownerSessionId: sessionId,
       workspaceId,
-      initialUrl: options?.initialUrl,
     })
   }
 
@@ -2122,26 +1994,16 @@ export class BrowserPaneManager implements IBrowserPaneManager {
   private getToolbarEffectiveHeight(instance: BrowserInstance): number {
     if (!instance.toolbarMenuOpen) return TOOLBAR_HEIGHT
 
-    const contentHeight = instance.embeddedBounds?.height ?? instance.window.getContentSize()[1]
+    const [, contentHeight] = instance.window.getContentSize()
     return Math.max(TOOLBAR_HEIGHT, contentHeight)
   }
 
-  private getPresentationWindow(instance: BrowserInstance): BrowserWindow {
-    return instance.embeddedHostWindow ?? instance.window
-  }
-
-  private getPresentationBounds(instance: BrowserInstance): BrowserPaneBounds {
-    if (instance.embeddedBounds) return instance.embeddedBounds
-    const [width, height] = instance.window.getContentSize()
-    return { x: 0, y: 0, width, height }
-  }
-
   private layoutToolbarView(instance: BrowserInstance): void {
-    const { x, y, width } = this.getPresentationBounds(instance)
+    const [width] = instance.window.getContentSize()
     const toolbarHeight = this.getToolbarEffectiveHeight(instance)
 
-    instance.toolbarView.setBounds({ x, y, width, height: toolbarHeight })
-    instance.toolbarView.setAutoResize({ width: !instance.embeddedBounds, height: false })
+    instance.toolbarView.setBounds({ x: 0, y: 0, width, height: toolbarHeight })
+    instance.toolbarView.setAutoResize({ width: true, height: false })
   }
 
   private updateNativeOverlayState(instance: BrowserInstance): void {
@@ -2150,23 +2012,19 @@ export class BrowserPaneManager implements IBrowserPaneManager {
     const menuActive = !!instance.toolbarMenuOverlayActive
     const shouldShow = agentActive || menuActive
 
-    const presentationWindow = this.getPresentationWindow(instance)
-    if (!shouldShow || !instance.nativeOverlayReady || presentationWindow.isDestroyed()) {
+    if (!shouldShow || !instance.nativeOverlayReady || instance.window.isDestroyed()) {
       instance.nativeOverlayView.setBounds({ x: 0, y: 0, width: 0, height: 0 })
-      if (!presentationWindow.isDestroyed()) {
-        presentationWindow.setTopBrowserView(instance.toolbarView)
+      if (!instance.window.isDestroyed()) {
+        instance.window.setTopBrowserView(instance.toolbarView)
       }
       return
     }
 
-    const { x, y, width, height } = this.getPresentationBounds(instance)
-    const overlayHeight = Math.max(0, height - TOOLBAR_HEIGHT)
-    instance.nativeOverlayView.setBounds({ x, y: y + TOOLBAR_HEIGHT, width, height: overlayHeight })
-    instance.nativeOverlayView.setAutoResize({
-      width: !instance.embeddedBounds,
-      height: !instance.embeddedBounds,
-    })
-    presentationWindow.setTopBrowserView(instance.toolbarView)
+    const [width, height] = instance.window.getContentSize()
+    const overlayHeight = Math.max(100, height - TOOLBAR_HEIGHT)
+    instance.nativeOverlayView.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width, height: overlayHeight })
+    instance.nativeOverlayView.setAutoResize({ width: true, height: true })
+    instance.window.setTopBrowserView(instance.toolbarView)
 
     if (agentActive) {
       const label = this.getAgentControlLabel(control)
@@ -2262,21 +2120,17 @@ export class BrowserPaneManager implements IBrowserPaneManager {
   }
 
   private layoutPageView(instance: BrowserInstance): void {
-    const { x, y, width, height } = this.getPresentationBounds(instance)
-    instance.pageView.setBounds({ x, y: y + TOOLBAR_HEIGHT, width, height: Math.max(0, height - TOOLBAR_HEIGHT) })
-    instance.pageView.setAutoResize({
-      width: !instance.embeddedBounds,
-      height: !instance.embeddedBounds,
-    })
+    const [width, height] = instance.window.getContentSize()
+    instance.pageView.setBounds({ x: 0, y: TOOLBAR_HEIGHT, width, height: Math.max(100, height - TOOLBAR_HEIGHT) })
+    instance.pageView.setAutoResize({ width: true, height: true })
     this.updateNativeOverlayState(instance)
   }
 
   private layoutAllViews(instance: BrowserInstance): void {
     this.layoutToolbarView(instance)
     this.layoutPageView(instance)
-    const presentationWindow = this.getPresentationWindow(instance)
-    if (!presentationWindow.isDestroyed()) {
-      presentationWindow.setTopBrowserView(instance.toolbarView)
+    if (!instance.window.isDestroyed()) {
+      instance.window.setTopBrowserView(instance.toolbarView)
     }
   }
 
@@ -3695,7 +3549,7 @@ export class BrowserPaneManager implements IBrowserPaneManager {
           minHeight: 520,
           show: true,
           autoHideMenuBar: true,
-          parent: this.getPresentationWindow(instance),
+          parent: instance.window,
           modal: false,
           webPreferences: {
             partition: SESSION_PARTITION,
