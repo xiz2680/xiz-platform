@@ -7,7 +7,9 @@ export function hasSessionInteraction(meta: SessionMeta): boolean {
 
 /** Conversations shown by the top-level All Sessions destination. */
 export function getUnprojectedActiveSessions(metas: SessionMeta[]): SessionMeta[] {
-  return metas.filter((meta) => !meta.isArchived && !meta.projectId && hasSessionInteraction(meta))
+  return metas
+    .filter((meta) => !meta.isArchived && !meta.projectId && hasSessionInteraction(meta))
+    .sort((a, b) => (b.lastMessageAt ?? b.createdAt ?? 0) - (a.lastMessageAt ?? a.createdAt ?? 0))
 }
 
 /** Active project conversations, grouped and ordered for direct sidebar navigation. */

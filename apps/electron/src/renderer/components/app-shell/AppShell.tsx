@@ -1461,7 +1461,7 @@ function AppShellContent({
   // Project navigation lives in the primary sidebar, so the middle navigator is
   // redundant for both a project detail page and one of its conversations.
   const isProjectFocusedView = focusedProjectId !== null
-  const isSessionDetailView = isSessionsNavigation(navState) && !!navState.details
+  const isSessionView = isSessionsNavigation(navState)
 
   // Count sources by type for the Sources dropdown subcategories
   const sourceTypeCounts = useMemo(() => {
@@ -2070,12 +2070,15 @@ function AppShellContent({
 
     // 3. All Sessions follows the complete project tree.
     result.push({ id: 'nav:allSessions', type: 'nav', action: handleAllSessionsClick })
+    for (const meta of unprojectedSessionMetas) {
+      result.push({ id: `nav:session:${meta.id}`, type: 'nav', action: () => navigate(routes.view.allSessions(meta.id), { replacePanels: true }) })
+    }
 
     // 4. Settings is visually pinned to the bottom.
     result.push({ id: 'nav:settings', type: 'nav', action: () => handleSettingsClick() })
 
     return result
-  }, [handleAllSessionsClick, handleSourcesClick, handleSkillsClick, handlePagesClick, handleAutomationsClick, projects, handleProjectClick, isExpanded, projectSessionMetas, handleSettingsClick])
+  }, [handleAllSessionsClick, handleSourcesClick, handleSkillsClick, handlePagesClick, handleAutomationsClick, projects, handleProjectClick, isExpanded, projectSessionMetas, unprojectedSessionMetas, handleSettingsClick])
 
   // Toggle folder expanded state
   const handleToggleFolder = React.useCallback((path: string) => {
@@ -2236,6 +2239,40 @@ function AppShellContent({
         return t("sidebar.allSessions")
     }
   }, [navState, t, sessionFilter, automationFilter, labelConfigs, viewConfigs, effectiveSessionStatuses])
+
+  // Reuse the same session business menu in both sidebar groups.
+  const createSidebarSessionLink = (meta: SessionMeta, group: 'project-session' | 'session') => ({
+    id: `nav:${group}:${meta.id}`,
+    title: getSessionTitle(meta),
+    variant: isSessionsNavigation(navState) && navState.details?.sessionId === meta.id
+      ? "default" as const
+      : "ghost" as const,
+    onClick: () => navigate(routes.view.allSessions(meta.id), { replacePanels: true }),
+    compact: true,
+    customContextMenuContent: (
+      <SessionMenu
+        item={meta}
+        sessionStatuses={effectiveSessionStatuses}
+        labels={displayLabelConfigs}
+        onLabelsChange={(labels) => handleSessionLabelsChange(meta.id, labels)}
+        onRename={() => setSidebarRenameSession({ id: meta.id, name: getSessionTitle(meta) })}
+        onFlag={() => onFlagSession(meta.id)}
+        onUnflag={() => onUnflagSession(meta.id)}
+        onArchive={() => onArchiveSession(meta.id)}
+        onUnarchive={() => onUnarchiveSession(meta.id)}
+        onMarkUnread={() => onMarkSessionUnread(meta.id)}
+        onSessionStatusChange={(status) => onSessionStatusChange(meta.id, status)}
+        onOpenInNewWindow={() => {
+          if (activeWorkspaceId) window.electronAPI.openSessionInNewWindow(activeWorkspaceId, meta.id)
+        }}
+        onSendToWorkspace={() => setSendToWorkspaceIds([meta.id])}
+        hasTransferTargets={hasTransferTargets(workspaces)}
+        onDelete={() => { void handleDeleteSession(meta.id) }}
+        projects={projectMenuOptions}
+        onSetProjectId={(projectId) => { void handleSessionProjectChange(meta.id, projectId) }}
+      />
+    ),
+  })
 
   return (
     <AppShellProvider value={appShellContextValue}>
@@ -2503,38 +2540,7 @@ function AppShellContent({
                             <SquarePenRounded className="h-3.5 w-3.5" />
                           </button>
                         ),
-                        items: projectSessions.map((meta) => ({
-                          id: `nav:project-session:${meta.id}`,
-                          title: meta.name || meta.id,
-                          variant: isSessionsNavigation(navState) && navState.details?.sessionId === meta.id
-                            ? "default" as const
-                            : "ghost" as const,
-                          onClick: () => navigate(routes.view.allSessions(meta.id)),
-                          compact: true,
-                          customContextMenuContent: (
-                            <SessionMenu
-                              item={meta}
-                              sessionStatuses={effectiveSessionStatuses}
-                              labels={displayLabelConfigs}
-                              onLabelsChange={(labels) => handleSessionLabelsChange(meta.id, labels)}
-                              onRename={() => setSidebarRenameSession({ id: meta.id, name: getSessionTitle(meta) })}
-                              onFlag={() => onFlagSession(meta.id)}
-                              onUnflag={() => onUnflagSession(meta.id)}
-                              onArchive={() => onArchiveSession(meta.id)}
-                              onUnarchive={() => onUnarchiveSession(meta.id)}
-                              onMarkUnread={() => onMarkSessionUnread(meta.id)}
-                              onSessionStatusChange={(status) => onSessionStatusChange(meta.id, status)}
-                              onOpenInNewWindow={() => {
-                                if (activeWorkspaceId) window.electronAPI.openSessionInNewWindow(activeWorkspaceId, meta.id)
-                              }}
-                              onSendToWorkspace={() => setSendToWorkspaceIds([meta.id])}
-                              hasTransferTargets={hasTransferTargets(workspaces)}
-                              onDelete={() => { void handleDeleteSession(meta.id) }}
-                              projects={projectMenuOptions}
-                              onSetProjectId={(projectId) => { void handleSessionProjectChange(meta.id, projectId) }}
-                            />
-                          ),
-                        })),
+                        items: projectSessions.map((meta) => createSidebarSessionLink(meta, 'project-session')),
                       }
                     }),
                     // --- All Sessions: after the complete project list ---
@@ -2565,6 +2571,7 @@ function AppShellContent({
                       ),
                       afterTitleAlwaysVisible: true,
                     },
+                    ...unprojectedSessionMetas.map((meta) => createSidebarSessionLink(meta, 'session')),
                   ]}
                 />
                 {/* Agent Tree: Hierarchical list of agents */}
@@ -3336,7 +3343,7 @@ function AppShellContent({
             )}
             </div>
           }
-          navigatorWidth={isAutoCompact ? sessionListWidth : (effectiveSidebarAndNavigatorHidden || isPagesView || isProjectsNavigation(navState) || isProjectFocusedView || isSessionDetailView ? 0 : sessionListWidth)}
+          navigatorWidth={isSessionView ? 0 : isAutoCompact ? sessionListWidth : (effectiveSidebarAndNavigatorHidden || isPagesView || isProjectsNavigation(navState) || isProjectFocusedView ? 0 : sessionListWidth)}
           isSidebarAndNavigatorHidden={effectiveSidebarAndNavigatorHidden}
           isRightSidebarVisible={false}
           isCompact={isAutoCompact}
@@ -3377,7 +3384,7 @@ function AppShellContent({
         )}
 
         {/* Session List Resize Handle (absolute, hidden in focused mode and pages) */}
-        {!effectiveSidebarAndNavigatorHidden && !isPagesView && !isProjectsNavigation(navState) && !isProjectFocusedView && !isSessionDetailView && (
+        {!effectiveSidebarAndNavigatorHidden && !isPagesView && !isProjectsNavigation(navState) && !isProjectFocusedView && !isSessionView && (
         <div
           ref={sessionListHandleRef}
           onMouseDown={(e) => { e.preventDefault(); setIsResizing('session-list') }}

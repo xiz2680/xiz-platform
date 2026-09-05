@@ -6,6 +6,8 @@ This file accumulates release notes for the next unreleased version. PRs that ad
 
 ## Improvements
 
+- Move general conversations under All Sessions in the left sidebar and remove the middle conversation navigator, retaining selection and session business menus.
+
 - Keep project conversations in a single primary pane, add project-scoped side conversations, restore the pinned new-session button, and keep unnamed drafts out of navigation until the first interaction.
 - Open the browser in an independent window without taking space from project conversations.
 

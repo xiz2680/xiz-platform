@@ -220,6 +220,7 @@ export function LeftSidebar({ links, isCollapsed, getItemProps, focusedItemId, i
               <div key={link.id} className="flex items-center px-2 py-[5px] text-[12px] text-foreground/45">
                 {link.onClick ? (
                   <button
+                    {...getItemProps?.(link.id)}
                     type="button"
                     onClick={link.onClick}
                     className="min-w-0 flex-1 truncate text-left rounded-sm outline-none hover:text-foreground/65 focus-visible:ring-1 focus-visible:ring-ring"
