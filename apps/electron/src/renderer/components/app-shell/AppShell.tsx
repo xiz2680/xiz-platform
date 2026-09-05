@@ -38,6 +38,7 @@ import {
 // SessionStatusIcons no longer used - icons come from dynamic sessionStatuses
 import { SourceAvatar } from "@/components/ui/source-avatar"
 import { TopBar } from "./TopBar"
+import { ProjectBrowserPanel } from "../browser/ProjectBrowserPanel"
 import { SquarePenRounded } from "../icons/SquarePenRounded"
 import { McpIcon } from "../icons/McpIcon"
 import { cn } from "@/lib/utils"
@@ -1461,6 +1462,11 @@ function AppShellContent({
   // Project navigation lives in the primary sidebar, so the middle navigator is
   // redundant for both a project detail page and one of its conversations.
   const isProjectFocusedView = focusedProjectId !== null
+  const isSessionDetailView = isSessionsNavigation(navState) && !!navState.details
+  const [browserProjectId, setBrowserProjectId] = useState<string | null>(null)
+  useEffect(() => {
+    if (browserProjectId && browserProjectId !== focusedProjectId) setBrowserProjectId(null)
+  }, [browserProjectId, focusedProjectId])
 
   // Count sources by type for the Sources dropdown subcategories
   const sourceTypeCounts = useMemo(() => {
@@ -1709,7 +1715,7 @@ function AppShellContent({
   }, [collapsedItems, activeWorkspaceId])
 
   const handleAllSessionsClick = useCallback(() => {
-    navigate(routes.view.allSessions())
+    navigate(routes.view.allSessions(), { skipAutoSelect: true, replacePanels: true })
   }, [])
 
   const handleFlaggedClick = useCallback(() => {
@@ -1769,7 +1775,7 @@ function AppShellContent({
       }
       return next
     })
-    navigate(routes.view.projects(projectSlug))
+    navigate(routes.view.projects(projectSlug), { replacePanels: true })
   }, [selectedProjectId])
 
   // Handler for pages view
@@ -1980,7 +1986,7 @@ function AppShellContent({
     if (!activeWorkspace) return
     setSearchActive(false)
     setSearchQuery('')
-    navigate(routes.action.newSession())
+    navigate(routes.action.newSession(), { replacePanels: true })
     setTimeout(() => focusZone('chat', { intent: 'programmatic' }), 50)
   }, [activeWorkspace, focusZone])
 
@@ -1988,7 +1994,12 @@ function AppShellContent({
     if (!activeWorkspace) return
     setSearchActive(false)
     setSearchQuery('')
-    navigate(routes.action.newSession({ project: projectId }))
+    setCollapsedItems((prev) => {
+      const next = new Set(prev)
+      next.delete(`nav:project:${projectId}`)
+      return next
+    })
+    navigate(routes.action.newSession({ project: projectId }), { replacePanels: true })
     setTimeout(() => focusZone('chat', { intent: 'programmatic' }), 50)
   }, [activeWorkspace, focusZone])
 
@@ -1998,20 +2009,6 @@ function AppShellContent({
     if (name) onRenameSession(sidebarRenameSession.id, name)
     setSidebarRenameSession(null)
   }, [onRenameSession, sidebarRenameSession])
-
-  // Create a brand new dedicated browser window and focus it.
-  // Intentionally unbound: this action should always create a NEW window.
-  const handleNewBrowserWindow = useCallback(async () => {
-    try {
-      const instanceId = await window.electronAPI.browserPane.create({
-        show: true,
-      })
-      await window.electronAPI.browserPane.focus(instanceId)
-    } catch (error) {
-      console.error('[Chat] Failed to create browser window:', error)
-      toast.error(t('toast.failedToCreateBrowser'))
-    }
-  }, [])
 
   // Delete Source - simplified since agents system is removed
   const handleDeleteSource = useCallback(async (sourceSlug: string) => {
@@ -2269,8 +2266,13 @@ function AppShellContent({
           canGoForward={canGoForward}
           onToggleSidebar={handleToggleSidebar}
           onToggleFocusMode={() => setIsSidebarAndNavigatorHidden(prev => !prev)}
-          onAddSessionPanel={() => handleNewChat(true)}
-          onAddBrowserPanel={() => { void handleNewBrowserWindow() }}
+          onAddSessionPanel={() => {
+            if (focusedProjectId) navigate(routes.action.newSession({ project: focusedProjectId }), { newPanel: true })
+          }}
+          canAddProjectPanel={focusedProjectId !== null}
+          onAddBrowserPanel={() => {
+            if (focusedProjectId) setBrowserProjectId(focusedProjectId)
+          }}
           isCompact={isAutoCompact}
         />
 
@@ -2299,9 +2301,25 @@ function AppShellContent({
             <div className="flex h-full flex-col select-none">
               {/* Sidebar Top Section */}
               <div className="flex-1 flex flex-col min-h-0">
+                <div className="px-2 pb-2 shrink-0">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        onClick={handleGlobalNewChat}
+                        className="w-full justify-start gap-2 py-[7px] px-2 text-[13px] font-normal rounded-[6px] shadow-minimal bg-background"
+                        data-tutorial="new-chat-button"
+                      >
+                        <SquarePenRounded className="h-3.5 w-3.5 shrink-0" />
+                        {t("session.newSession")}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{newChatHotkey}</TooltipContent>
+                  </Tooltip>
+                </div>
                 {/* Primary navigation scrolls independently; Settings stays pinned below it. */}
                 {/* pb-4 provides clearance so the last item scrolls above the mask-fade-bottom gradient */}
-                <div className="flex-1 overflow-y-auto min-h-0 mask-fade-bottom pb-4">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 mask-fade-bottom pb-4">
                 <LeftSidebar
                   isCollapsed={false}
                   getItemProps={getSidebarItemProps}
@@ -3317,12 +3335,27 @@ function AppShellContent({
             )}
             </div>
           }
-          navigatorWidth={isAutoCompact ? sessionListWidth : (effectiveSidebarAndNavigatorHidden || isPagesView || isProjectsNavigation(navState) || isProjectFocusedView ? 0 : sessionListWidth)}
+          navigatorWidth={isAutoCompact ? sessionListWidth : (effectiveSidebarAndNavigatorHidden || isPagesView || isProjectsNavigation(navState) || isProjectFocusedView || isSessionDetailView ? 0 : sessionListWidth)}
           isSidebarAndNavigatorHidden={effectiveSidebarAndNavigatorHidden}
           isRightSidebarVisible={false}
           isCompact={isAutoCompact}
           isResizing={!!isResizing}
         />
+
+        {browserProjectId && browserProjectId === focusedProjectId && (
+          <div
+            className="h-full shrink-0 overflow-hidden rounded-[8px] bg-background shadow-middle"
+            style={{ width: 'clamp(320px, 40vw, 560px)' }}
+          >
+            <ProjectBrowserPanel
+              projectId={browserProjectId}
+              sessionId={focusedSessionId}
+              initialUrl="about:blank"
+              className="h-full w-full"
+              onClose={() => setBrowserProjectId(null)}
+            />
+          </div>
+        )}
 
         {/* Sidebar Resize Handle (absolute, hidden in focused mode) */}
         {!effectiveSidebarAndNavigatorHidden && (
@@ -3358,7 +3391,7 @@ function AppShellContent({
         )}
 
         {/* Session List Resize Handle (absolute, hidden in focused mode and pages) */}
-        {!effectiveSidebarAndNavigatorHidden && !isPagesView && !isProjectsNavigation(navState) && !isProjectFocusedView && (
+        {!effectiveSidebarAndNavigatorHidden && !isPagesView && !isProjectsNavigation(navState) && !isProjectFocusedView && !isSessionDetailView && (
         <div
           ref={sessionListHandleRef}
           onMouseDown={(e) => { e.preventDefault(); setIsResizing('session-list') }}

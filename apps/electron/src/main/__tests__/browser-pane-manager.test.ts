@@ -23,6 +23,9 @@ function createMockWebContents() {
       if (!listeners[event]) listeners[event] = []
       listeners[event].push(cb)
     },
+    removeListener: (event: string, cb: Function) => {
+      listeners[event] = (listeners[event] || []).filter(fn => fn !== cb)
+    },
     loadURL: mock(async (url: string) => {
       currentUrl = url
       const isToolbarUrl = typeof url === 'string' && url.includes('browser-toolbar.html')
@@ -31,8 +34,8 @@ function createMockWebContents() {
         throw new Error('mock toolbar load failure')
       }
     }),
-    loadFile: mock(async (_path: string, _opts?: unknown) => {
-      if (toolbarLoadFailuresRemaining > 0) {
+    loadFile: mock(async (path: string, _opts?: unknown) => {
+      if (path.includes('browser-toolbar') && toolbarLoadFailuresRemaining > 0) {
         toolbarLoadFailuresRemaining--
         throw new Error('mock toolbar load failure')
       }
@@ -69,7 +72,12 @@ function createMockWebContents() {
     },
     _listeners: listeners,
     _emit: (event: string, ...args: any[]) => {
-      for (const cb of listeners[event] || []) cb({}, ...args)
+      for (const cb of listeners[event] || []) {
+        // Electron's did-create-window callback is the unusual WebContents
+        // event that does not receive an Event object first.
+        if (event === 'did-create-window') cb(...args)
+        else cb({}, ...args)
+      }
     },
   }
 }
@@ -97,6 +105,9 @@ function createMockWindow(opts?: { width?: number; height?: number; minWidth?: n
       if (!listeners[event]) listeners[event] = []
       listeners[event].push(cb)
     },
+    removeListener: (event: string, cb: Function) => {
+      listeners[event] = (listeners[event] || []).filter(fn => fn !== cb)
+    },
     once: (event: string, cb: Function) => {
       const wrapped = (...args: any[]) => {
         listeners[event] = (listeners[event] || []).filter(fn => fn !== wrapped)
@@ -123,6 +134,7 @@ function createMockWindow(opts?: { width?: number; height?: number; minWidth?: n
     }),
     setBrowserView: mock((_view: any) => {}),
     addBrowserView: mock((_view: any) => {}),
+    removeBrowserView: mock((_view: any) => {}),
     setTopBrowserView: mock((_view: any) => {}),
     getContentSize: mock(() => [contentWidth, contentHeight]),
     setContentSize: mock((width: number, height: number) => {
@@ -542,6 +554,76 @@ describe('BrowserPaneManager', () => {
     })
   })
 
+  describe('embedded host lifecycle', () => {
+    it('uses a single initial navigation instead of racing the default empty state', () => {
+      const id = manager.createInstance('embedded-initial-url', {
+        workspaceId: 'ws-alpha',
+        initialUrl: 'about:blank',
+      })
+      const instance = manager.getInstance(id) as any
+
+      expect(instance.pageView.webContents.loadURL).toHaveBeenCalledTimes(1)
+      expect(instance.pageView.webContents.loadURL).toHaveBeenCalledWith('about:blank')
+      expect(instance.pageView.webContents.loadFile).not.toHaveBeenCalled()
+    })
+
+    it('reparents all native views into the requesting app window and applies bounds', () => {
+      const id = manager.createInstance('embedded', { workspaceId: 'ws-alpha' })
+      const ownerWindow = createdWindows[0]
+      const hostWindow = createMockWindow({ width: 1000, height: 700 })
+      manager.setWindowManager({
+        getWindowByWebContentsId: (webContentsId: number) => webContentsId === 42 ? hostWindow : null,
+        getWorkspaceForWindow: (webContentsId: number) => webContentsId === 42 ? 'ws-alpha' : null,
+      } as any)
+
+      manager.attachEmbedded(id, 42, { x: 400, y: 50, width: 700, height: 800 })
+
+      expect(ownerWindow.removeBrowserView).toHaveBeenCalledTimes(3)
+      expect(hostWindow.addBrowserView).toHaveBeenCalledTimes(3)
+      const instance = manager.getInstance(id) as any
+      expect(instance.embeddedBounds).toEqual({ x: 400, y: 50, width: 600, height: 650 })
+      expect(instance.toolbarView.setBounds).toHaveBeenLastCalledWith({
+        x: 400,
+        y: 50,
+        width: 600,
+        height: 48,
+      })
+      expect(instance.pageView.setBounds).toHaveBeenLastCalledWith({
+        x: 400,
+        y: 98,
+        width: 600,
+        height: 602,
+      })
+    })
+
+    it('rejects embedding an instance into a different workspace', () => {
+      const id = manager.createInstance('embedded-cross-workspace', { workspaceId: 'ws-alpha' })
+      const hostWindow = createMockWindow()
+      manager.setWindowManager({
+        getWindowByWebContentsId: () => hostWindow,
+        getWorkspaceForWindow: () => 'ws-beta',
+      } as any)
+
+      expect(() => manager.attachEmbedded(id, 42, { x: 0, y: 0, width: 600, height: 500 }))
+        .toThrow('another workspace')
+    })
+
+    it('destroys an embedded pane instead of hiding its holder window', () => {
+      const id = manager.createInstance('embedded-close', { workspaceId: 'ws-alpha' })
+      const hostWindow = createMockWindow()
+      manager.setWindowManager({
+        getWindowByWebContentsId: () => hostWindow,
+        getWorkspaceForWindow: () => 'ws-alpha',
+      } as any)
+      manager.attachEmbedded(id, 42, { x: 300, y: 40, width: 600, height: 500 })
+
+      manager.hide(id)
+
+      expect(manager.getInstance(id)).toBeUndefined()
+      expect(hostWindow.removeBrowserView).toHaveBeenCalledTimes(3)
+    })
+  })
+
   it('navigate normalizes hostnames to https', async () => {
     manager.createInstance('nav-1')
     await manager.navigate('nav-1', 'example.com')
@@ -578,7 +660,8 @@ describe('BrowserPaneManager', () => {
     manager.focus('f1')
 
     const instance = (manager as any).instances.get('f1')
-    instance.window._emit('ready-to-show')
+    instance.toolbarView.webContents.getURL = mock(() => 'http://localhost:5173/browser-toolbar.html')
+    instance.toolbarView.webContents._emit('did-finish-load')
 
     expect(instance.window.show).toHaveBeenCalled()
     expect(instance.window.focus).toHaveBeenCalled()
@@ -592,7 +675,8 @@ describe('BrowserPaneManager', () => {
     manager.focus('f2')
 
     const instance = (manager as any).instances.get('f2')
-    instance.window._emit('ready-to-show')
+    instance.toolbarView.webContents.getURL = mock(() => 'http://localhost:5173/browser-toolbar.html')
+    instance.toolbarView.webContents._emit('did-finish-load')
 
     expect(instance.window.show.mock.calls.length).toBe(1)
     expect(instance.window.focus.mock.calls.length).toBe(1)
@@ -671,14 +755,15 @@ describe('BrowserPaneManager', () => {
 
     await Bun.sleep(1400)
 
-    const toolbarWindow = createdWindows[0]
-    const fileAttempts = toolbarWindow.webContents.loadFile.mock.calls.length
-    const toolbarUrlAttempts = toolbarWindow.webContents.loadURL.mock.calls
+    const instance = (manager as any).instances.get('retry-toolbar')
+    const toolbarWebContents = instance.toolbarView.webContents
+    const fileAttempts = toolbarWebContents.loadFile.mock.calls.length
+    const toolbarUrlAttempts = toolbarWebContents.loadURL.mock.calls
       .filter((args: [string]) => args[0]?.includes('browser-toolbar.html')).length
     const totalAttempts = fileAttempts + toolbarUrlAttempts
 
     expect(totalAttempts).toBe(3)
-    expect(toolbarWindow.webContents.loadURL).not.toHaveBeenCalledWith(expect.stringContaining('data:text/html'))
+    expect(toolbarWebContents.loadURL).not.toHaveBeenCalledWith(expect.stringContaining('data:text/html'))
   })
 
   it('loads toolbar fallback page after retry exhaustion', async () => {
@@ -687,14 +772,15 @@ describe('BrowserPaneManager', () => {
 
     await Bun.sleep(3200)
 
-    const toolbarWindow = createdWindows[0]
-    const fileAttempts = toolbarWindow.webContents.loadFile.mock.calls.length
-    const toolbarUrlAttempts = toolbarWindow.webContents.loadURL.mock.calls
+    const instance = (manager as any).instances.get('fallback-toolbar')
+    const toolbarWebContents = instance.toolbarView.webContents
+    const fileAttempts = toolbarWebContents.loadFile.mock.calls.length
+    const toolbarUrlAttempts = toolbarWebContents.loadURL.mock.calls
       .filter((args: [string]) => args[0]?.includes('browser-toolbar.html')).length
     const totalAttempts = fileAttempts + toolbarUrlAttempts
 
     expect(totalAttempts).toBe(5)
-    expect(toolbarWindow.webContents.loadURL).toHaveBeenCalledWith(expect.stringContaining('data:text/html'))
+    expect(toolbarWebContents.loadURL).toHaveBeenCalledWith(expect.stringContaining('data:text/html'))
   })
 
   it('captures and filters console entries', () => {
@@ -770,10 +856,10 @@ describe('BrowserPaneManager', () => {
     instance.canGoForward = false
     instance.themeColor = '#123456'
 
-    const sendsBeforeShow = instance.window.webContents.send.mock.calls.length
+    const sendsBeforeShow = instance.toolbarView.webContents.send.mock.calls.length
     instance.window._emit('show')
 
-    const sendCallsAfterShow = instance.window.webContents.send.mock.calls.slice(sendsBeforeShow)
+    const sendCallsAfterShow = instance.toolbarView.webContents.send.mock.calls.slice(sendsBeforeShow)
     expect(sendCallsAfterShow).toContainEqual([
       'browser-toolbar:state-update',
       {
@@ -801,10 +887,10 @@ describe('BrowserPaneManager', () => {
 
     instance.toolbarView.webContents.getURL = mock(() => 'http://localhost:5173/browser-toolbar.html?instanceId=toolbar-finish-load-replay')
 
-    const sendsBeforeFinishLoad = instance.window.webContents.send.mock.calls.length
+    const sendsBeforeFinishLoad = instance.toolbarView.webContents.send.mock.calls.length
     instance.toolbarView.webContents._emit('did-finish-load')
 
-    const sendCallsAfterFinishLoad = instance.window.webContents.send.mock.calls.slice(sendsBeforeFinishLoad)
+    const sendCallsAfterFinishLoad = instance.toolbarView.webContents.send.mock.calls.slice(sendsBeforeFinishLoad)
     expect(sendCallsAfterFinishLoad).toContainEqual([
       'browser-toolbar:state-update',
       {

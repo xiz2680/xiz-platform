@@ -52,7 +52,7 @@ import {
 import { routes, type Route, type ViewRoute } from '../../shared/routes'
 import { parsePermissionMode } from '@xiz-platform/shared/agent/mode-types'
 import { NAVIGATE_EVENT, type NavigateOptions } from '../lib/navigate'
-import { normalizePanelRouteForReconcile } from './navigation-reconcile'
+import { normalizePanelRouteForReconcile, parsePanelEntry } from './navigation-reconcile'
 import { buildSemanticHistoryKey, canRunInitialRestore } from './navigation-history'
 import * as storage from '@/lib/local-storage'
 import type {
@@ -77,6 +77,7 @@ import {
 import { sessionMetaMapAtom, updateSessionMetaAtom, type SessionMeta } from '@/atoms/sessions'
 import { sourcesAtom } from '@/atoms/sources'
 import { skillsAtom } from '@/atoms/skills'
+import { shouldDiscardEmptySession } from './empty-session'
 import {
   panelStackAtom,
   pushPanelAtom,
@@ -141,6 +142,7 @@ interface NavigationProviderProps {
   onInputChange?: (sessionId: string, value: string) => void
   /** Get draft input text for a session (reads from ref, no re-render) */
   getDraft?: (sessionId: string) => string
+  getDraftAttachmentRefs?: (sessionId: string) => readonly unknown[]
   /** Auto-delete an empty session (no confirmation needed) */
   onAutoDeleteEmptySession?: (sessionId: string) => void
   /** Whether the app is ready to navigate */
@@ -159,6 +161,7 @@ export function NavigationProvider({
   onCreateSession,
   onInputChange,
   getDraft,
+  getDraftAttachmentRefs,
   onAutoDeleteEmptySession,
   isReady = true,
   isSessionsReady = true,
@@ -427,18 +430,9 @@ export function NavigationProvider({
         // Canonical format: ?panels= contains ALL panels, ?fi= is focused index.
         // We intentionally no longer support older mixed route/panels formats.
         entries = panelsParam.split(',').filter(Boolean).map(entry => {
-          const colonIdx = entry.lastIndexOf(':')
-          if (colonIdx > 0) {
-            const proportion = parseFloat(entry.slice(colonIdx + 1))
-            if (!isNaN(proportion) && proportion > 0 && proportion < 1) {
-              const rawRoute = entry.slice(0, colonIdx) as ViewRoute
-              const route = normalizePanelRouteForReconcile(rawRoute, (state) => resolveAutoSelectionRef.current(state))
-              return { route, proportion }
-            }
-          }
-          const rawRoute = entry as ViewRoute
+          const { route: rawRoute, proportion } = parsePanelEntry(entry)
           const route = normalizePanelRouteForReconcile(rawRoute, (state) => resolveAutoSelectionRef.current(state))
-          return { route, proportion: 0 }
+          return { route, proportion }
         })
 
         const hasProportions = entries.some(e => e.proportion > 0)
@@ -497,9 +491,7 @@ export function NavigationProvider({
       for (const prevId of prevVisibleSessionIdsRef.current) {
         if (!currentIds.has(prevId)) {
           const meta = store.get(sessionMetaMapAtom).get(prevId)
-          const isEmpty = meta && !meta.lastFinalMessageId && !meta.name && !meta.isProcessing
-          const hasDraft = getDraft?.(prevId)?.trim()
-          if (isEmpty && !hasDraft) {
+          if (shouldDiscardEmptySession(meta, getDraft?.(prevId), getDraftAttachmentRefs?.(prevId).length)) {
             onAutoDeleteEmptySession(prevId)
           }
         }
@@ -507,7 +499,7 @@ export function NavigationProvider({
     }
 
     prevVisibleSessionIdsRef.current = currentIds
-  }, [panelStack, onAutoDeleteEmptySession, store, getDraft])
+  }, [panelStack, onAutoDeleteEmptySession, store, getDraft, getDraftAttachmentRefs])
 
   // =========================================================================
   // SESSION SELECTION SYNC
@@ -681,7 +673,7 @@ export function NavigationProvider({
   // =========================================================================
 
   const handleActionNavigation = useCallback(
-    async (parsed: ParsedRoute, options?: { newPanel?: boolean; targetLaneId?: 'main' }) => {
+    async (parsed: ParsedRoute, options?: NavigateOptions) => {
       if (!workspaceId) return
 
       switch (parsed.name) {
@@ -737,7 +729,12 @@ export function NavigationProvider({
             parsed.params.label ? { kind: 'label', labelId: parsed.params.label } :
             { kind: 'allSessions' }
 
-          if (options?.newPanel) {
+          if (options?.replacePanels) {
+            store.set(reconcilePanelStackAtom, {
+              entries: [{ route: routes.view.allSessions(session.id) as ViewRoute, proportion: 1 }],
+              focusedIndex: 0,
+            })
+          } else if (options?.newPanel) {
             // Open the new session in a new panel using lane-aware routing (pushPanel auto-focuses it)
             pushPanel({
               route: routes.view.allSessions(session.id) as ViewRoute,
@@ -917,7 +914,14 @@ export function NavigationProvider({
 
         // Update the focused panel's route (atom update is synchronous)
         // The panelStack atom subscription detects the route change and calls syncUrl(true)
-        store.set(updateFocusedPanelRouteAtom, finalRoute)
+        if (options?.replacePanels) {
+          store.set(reconcilePanelStackAtom, {
+            entries: [{ route: finalRoute, proportion: 1 }],
+            focusedIndex: 0,
+          })
+        } else {
+          store.set(updateFocusedPanelRouteAtom, finalRoute)
+        }
       }
     },
     [isReady, handleActionNavigation, resolveAutoSelection, store, pushPanel, workspaceId]
@@ -1149,10 +1153,10 @@ export function NavigationProvider({
 
   useEffect(() => {
     const handleNavigateEvent = (event: Event) => {
-      const customEvent = event as CustomEvent<{ route: Route; newPanel?: boolean; targetLaneId?: 'main' }>
+      const customEvent = event as CustomEvent<{ route: Route } & NavigateOptions>
       if (customEvent.detail?.route) {
-        const { route: r, newPanel, targetLaneId } = customEvent.detail
-        navigate(r, newPanel ? { newPanel, targetLaneId } : undefined)
+        const { route: r, ...options } = customEvent.detail
+        navigate(r, options)
       }
     }
 

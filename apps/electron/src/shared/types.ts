@@ -108,6 +108,16 @@ export interface BrowserPaneCreateOptions {
   id?: string
   show?: boolean
   bindToSessionId?: string
+  /** Optional first page; when set, the default browser empty state is skipped. */
+  initialUrl?: string
+}
+
+/** Bounds in renderer content coordinates for a native embedded browser pane. */
+export interface BrowserPaneBounds {
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 /**
@@ -640,6 +650,8 @@ export interface ElectronAPI {
     reload(id: string): Promise<void>
     stop(id: string): Promise<void>
     focus(id: string): Promise<void>
+    attachEmbedded(id: string, bounds: BrowserPaneBounds): Promise<void>
+    setEmbeddedBounds(id: string, bounds: BrowserPaneBounds): Promise<void>
     emptyStateLaunch(payload: BrowserEmptyStateLaunchPayload): Promise<BrowserEmptyStateLaunchResult>
     onStateChanged(callback: (info: BrowserInstanceInfo) => void): () => void
     onRemoved(callback: (id: string) => void): () => void

@@ -5,6 +5,7 @@ import {
   focusedPanelIdAtom,
   pushPanelAtom,
   reconcilePanelStackAtom,
+  resizePanelsAtom,
   updateFocusedPanelRouteAtom,
   type PanelStackEntry,
 } from '../panel-stack'
@@ -27,6 +28,31 @@ describe('panel stack single-lane behavior', () => {
     expect(stack[1].route).toBe('sources/source/github')
     expect(stack[2].route).toBe('settings')
     expect(stack.every((p) => p.laneId === 'main')).toBe(true)
+  })
+
+  it('gives newly pushed panels a non-zero share and proportionally shrinks existing panels', () => {
+    const store = createStore()
+
+    store.set(pushPanelAtom, { route: 'allSessions/session/s1' })
+    expect(getStack(store)[0].proportion).toBeCloseTo(1)
+
+    store.set(pushPanelAtom, { route: 'allSessions/session/s2' })
+    expect(getStack(store).map((panel) => panel.proportion)).toEqual([0.5, 0.5])
+
+    store.set(resizePanelsAtom, {
+      leftIndex: 0,
+      rightIndex: 1,
+      leftProportion: 0.75,
+      rightProportion: 0.25,
+    })
+    store.set(pushPanelAtom, { route: 'allSessions/session/s3' })
+
+    const proportions = getStack(store).map((panel) => panel.proportion)
+    expect(proportions[0]).toBeCloseTo(0.5)
+    expect(proportions[1]).toBeCloseTo(1 / 6)
+    expect(proportions[2]).toBeCloseTo(1 / 3)
+    expect(proportions.every((proportion) => proportion > 0)).toBe(true)
+    expect(proportions.reduce((sum, proportion) => sum + proportion, 0)).toBeCloseTo(1)
   })
 
   it('implicit navigation updates focused panel route', () => {
@@ -107,5 +133,32 @@ describe('panel stack single-lane behavior', () => {
 
     expect(changed).toBe(false)
     expect(store.get(focusedPanelIdAtom)).toBe(secondId)
+  })
+
+  it('reconcile replaces project detail with one focused session panel', () => {
+    const store = createStore()
+
+    store.set(reconcilePanelStackAtom, {
+      entries: [{ route: 'projects/project/project-one', proportion: 1 }],
+      focusedIndex: 0,
+    })
+    const projectPanelId = getStack(store)[0].id
+
+    const changed = store.set(reconcilePanelStackAtom, {
+      entries: [{ route: 'allSessions/session/session-one', proportion: 1 }],
+      focusedIndex: 0,
+    })
+
+    const stack = getStack(store)
+    expect(changed).toBe(true)
+    expect(stack).toHaveLength(1)
+    expect(stack[0]).toMatchObject({
+      id: projectPanelId,
+      route: 'allSessions/session/session-one',
+      proportion: 1,
+      panelType: 'session',
+      laneId: 'main',
+    })
+    expect(store.get(focusedPanelIdAtom)).toBe(projectPanelId)
   })
 })

@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'bun:test'
-import { normalizePanelRouteForReconcile } from '../navigation-reconcile'
+import { normalizePanelRouteForReconcile, parsePanelEntry } from '../navigation-reconcile'
 import type { NavigationState } from '../../../shared/types'
+
+describe('panel URL proportions', () => {
+  it('does not append zero or full-width proportions to session IDs', () => {
+    for (const proportion of [0, 0.5, 1]) {
+      expect(parsePanelEntry(`allSessions/session/s1:${proportion.toFixed(4)}`)).toEqual({
+        route: 'allSessions/session/s1', proportion,
+      })
+    }
+  })
+  it('accepts legacy routes without a proportion', () => {
+    expect(parsePanelEntry('allSessions/session/s1')).toEqual({ route: 'allSessions/session/s1', proportion: 0 })
+  })
+})
 
 describe('normalizePanelRouteForReconcile', () => {
   it('auto-selects session details for filter-only session routes', () => {

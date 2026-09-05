@@ -186,10 +186,10 @@ export function LeftSidebar({ links, isCollapsed, getItemProps, focusedItemId, i
   } : {}
 
   return (
-    <div className={cn("flex flex-col select-none", !isNested && "py-1")}>
+    <div className={cn("flex min-w-0 w-full flex-col select-none", !isNested && "py-1")}>
       <NavWrapper
         className={cn(
-          "grid gap-0.5",
+          "grid min-w-0 grid-cols-[minmax(0,1fr)] gap-0.5",
           isNested ? "pl-5 pr-0 relative" : "px-2"
         )}
         role="navigation"
@@ -254,7 +254,8 @@ export function LeftSidebar({ links, isCollapsed, getItemProps, focusedItemId, i
           // ContextMenuTrigger with asChild sets data-state="open" on the button
           // so only the clicked item highlights, not the entire section.
           const content = (
-            <div className="group/section relative">
+            <div className="min-w-0">
+              <div className="group/section relative min-w-0">
               {link.contextMenu || link.customContextMenuContent ? (
                 <ContextMenu modal={true}>
                   <ContextMenuTrigger asChild>
@@ -289,10 +290,11 @@ export function LeftSidebar({ links, isCollapsed, getItemProps, focusedItemId, i
                 buttonElement
               )}
               {link.trailingAction && (
-                <span className="absolute right-2 top-1/2 z-10 -translate-y-1/2 opacity-0 transition-opacity group-hover/section:opacity-100 focus-within:opacity-100">
+                <span className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 opacity-0 transition-opacity group-hover/section:opacity-100 group-focus-within/section:opacity-100">
                   {link.trailingAction}
                 </span>
               )}
+              </div>
               {/* Expandable subitems — outside context menu scope so only the
                 * clicked button gets data-state="open", not nested children */}
               {link.expandable && link.items && (
@@ -315,7 +317,7 @@ export function LeftSidebar({ links, isCollapsed, getItemProps, focusedItemId, i
 
           // For nested items, wrap in motion.div for stagger animation
           return isNested ? (
-            <motion.div key={link.id} variants={itemVariants}>
+            <motion.div key={link.id} variants={itemVariants} className="min-w-0">
               {content}
             </motion.div>
           ) : (
@@ -524,7 +526,7 @@ const SidebarButton = React.forwardRef<HTMLButtonElement, SidebarButtonProps & R
         onClick={isOverlay ? undefined : link.onClick}
         data-tutorial={link.dataTutorial}
         className={cn(
-          "group flex w-full items-center gap-2 rounded-[6px] text-[13px] select-none outline-none",
+          "group flex min-w-0 w-full items-center gap-2 rounded-[6px] text-[13px] select-none outline-none",
           "focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
           // Compact mode: 4px less total height (py-[3px] vs py-[5px])
           link.compact ? "py-[3px]" : "py-[5px]",

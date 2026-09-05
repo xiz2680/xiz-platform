@@ -1,4 +1,9 @@
-import { RPC_CHANNELS, type BrowserPaneCreateOptions, type BrowserEmptyStateLaunchPayload } from '../../shared/types'
+import {
+  RPC_CHANNELS,
+  type BrowserPaneBounds,
+  type BrowserPaneCreateOptions,
+  type BrowserEmptyStateLaunchPayload,
+} from '../../shared/types'
 import type { BrowserScreenshotOptions } from '../browser-pane-manager'
 import { pushTyped, type RpcServer } from '@xiz-platform/server-core/transport'
 import type { HandlerDeps } from './handler-deps'
@@ -13,6 +18,8 @@ export const HANDLED_CHANNELS = [
   RPC_CHANNELS.browserPane.RELOAD,
   RPC_CHANNELS.browserPane.STOP,
   RPC_CHANNELS.browserPane.FOCUS,
+  RPC_CHANNELS.browserPane.ATTACH_EMBEDDED,
+  RPC_CHANNELS.browserPane.SET_EMBEDDED_BOUNDS,
   RPC_CHANNELS.browserPane.LAUNCH,
   RPC_CHANNELS.browserPane.SNAPSHOT,
   RPC_CHANNELS.browserPane.CLICK,
@@ -39,13 +46,30 @@ export function registerBrowserHandlers(server: RpcServer, deps: HandlerDeps): v
     }
 
     if (input?.bindToSessionId) {
+      // Embedded project panels provide a unique id so React StrictMode setup /
+      // cleanup cycles cannot reuse and then destroy another effect's bound
+      // browser. Legacy callers without an id keep canonical session reuse.
+      if (input.id) {
+        return browserPaneManager.createInstance(input.id, {
+          show: input.show ?? false,
+          ownerType: 'session',
+          ownerSessionId: input.bindToSessionId,
+          workspaceId,
+          initialUrl: input.initialUrl,
+        })
+      }
       return browserPaneManager.createForSession(input.bindToSessionId, {
         show: input.show ?? false,
         workspaceId,
+        initialUrl: input.initialUrl,
       })
     }
 
-    return browserPaneManager.createInstance(input?.id, { show: input?.show, workspaceId })
+    return browserPaneManager.createInstance(input?.id, {
+      show: input?.show,
+      workspaceId,
+      initialUrl: input?.initialUrl,
+    })
   })
 
   server.handle(RPC_CHANNELS.browserPane.DESTROY, (_ctx, id: string) => {
@@ -98,6 +122,20 @@ export function registerBrowserHandlers(server: RpcServer, deps: HandlerDeps): v
 
   server.handle(RPC_CHANNELS.browserPane.FOCUS, (_ctx, id: string) => {
     browserPaneManager.focus(id)
+  })
+
+  server.handle(RPC_CHANNELS.browserPane.ATTACH_EMBEDDED, (ctx, id: string, bounds: BrowserPaneBounds) => {
+    if (ctx.webContentsId == null) {
+      throw new Error('Embedded browser panes are only available in a local Electron window')
+    }
+    browserPaneManager.attachEmbedded(id, ctx.webContentsId, bounds)
+  })
+
+  server.handle(RPC_CHANNELS.browserPane.SET_EMBEDDED_BOUNDS, (ctx, id: string, bounds: BrowserPaneBounds) => {
+    if (ctx.webContentsId == null) {
+      throw new Error('Embedded browser panes are only available in a local Electron window')
+    }
+    browserPaneManager.setEmbeddedBounds(id, ctx.webContentsId, bounds)
   })
 
   server.handle(RPC_CHANNELS.browserPane.LAUNCH, async (ctx, payload: BrowserEmptyStateLaunchPayload) => {

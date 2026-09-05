@@ -4,6 +4,19 @@ import type { NavigationState } from '../../shared/types'
 
 export type AutoSelectionResolver = (state: NavigationState) => NavigationState
 
+/** Decode every proportion our URL writer emits, including collapsed panes. */
+export function parsePanelEntry(entry: string): { route: ViewRoute; proportion: number } {
+  const colon = entry.lastIndexOf(':')
+  if (colon > 0) {
+    const suffix = entry.slice(colon + 1)
+    const proportion = Number(suffix)
+    if (suffix && Number.isFinite(proportion) && proportion >= 0 && proportion <= 1) {
+      return { route: entry.slice(0, colon) as ViewRoute, proportion }
+    }
+  }
+  return { route: entry as ViewRoute, proportion: 0 }
+}
+
 /**
  * Normalize a panel route during URL reconciliation.
  *

@@ -366,6 +366,8 @@ export const RPC_CHANNELS = {
     RELOAD: 'browser-pane:reload',
     STOP: 'browser-pane:stop',
     FOCUS: 'browser-pane:focus',
+    ATTACH_EMBEDDED: 'browser-pane:attach-embedded',
+    SET_EMBEDDED_BOUNDS: 'browser-pane:set-embedded-bounds',
     SNAPSHOT: 'browser-pane:snapshot',
     CLICK: 'browser-pane:click',
     FILL: 'browser-pane:fill',

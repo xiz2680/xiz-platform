@@ -58,6 +58,7 @@ interface TopBarProps {
   onToggleFocusMode: () => void
   onAddSessionPanel: () => void
   onAddBrowserPanel: () => void
+  canAddProjectPanel: boolean
   /** When true, hides controls that don't apply in compact/mobile layout */
   isCompact?: boolean
 }
@@ -85,6 +86,7 @@ export function TopBar({
   onToggleFocusMode,
   onAddSessionPanel,
   onAddBrowserPanel,
+  canAddProjectPanel,
   isCompact,
 }: TopBarProps) {
   const { t } = useTranslation()
@@ -287,18 +289,18 @@ export function TopBar({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <TopBarButton aria-label={t("menu.addPanelMenu")} className="h-[26px] w-[26px] rounded-lg">
+            <TopBarButton disabled={!canAddProjectPanel} aria-label={t("project.addSidePanel")} className="h-[26px] w-[26px] rounded-lg">
               <Icons.Plus className="h-4 w-4 text-foreground/50" strokeWidth={1.5} />
             </TopBarButton>
           </DropdownMenuTrigger>
           <StyledDropdownMenuContent align="end" minWidth="min-w-56">
             <StyledDropdownMenuItem onClick={onAddSessionPanel}>
               <SquarePenRounded className="h-3.5 w-3.5" />
-              {t("session.newSessionInPanel")}
+              {t("project.addSideChat")}
             </StyledDropdownMenuItem>
             <StyledDropdownMenuItem onClick={onAddBrowserPanel}>
               <Icons.Globe className="h-3.5 w-3.5" />
-              {t("browser.newWindow")}
+              {t("project.addSideBrowser")}
             </StyledDropdownMenuItem>
           </StyledDropdownMenuContent>
         </DropdownMenu>
