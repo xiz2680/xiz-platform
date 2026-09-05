@@ -22,7 +22,8 @@ interface PendingPrivilegedRequest extends PrivilegedExecutionRequest {
 }
 
 const DEFAULT_APPROVAL_TTL_SECONDS = 120
-const AUDIT_LOG_PATH = join(homedir(), '.craft-agent', 'logs', 'privileged-actions.jsonl')
+const CONFIG_DIR = process.env.CRAFT_CONFIG_DIR || join(homedir(), '.craft-agent')
+const AUDIT_LOG_PATH = join(CONFIG_DIR, 'logs', 'privileged-actions.jsonl')
 
 /**
  * PrivilegedExecutionBroker

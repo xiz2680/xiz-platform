@@ -79,10 +79,16 @@ export interface LinkItem {
   dataTutorial?: string // data-tutorial attribute for tutorial targeting
   // Context menu configuration (optional - if provided, right-click shows context menu)
   contextMenu?: SidebarContextMenuConfig
+  /** Custom context-menu content for business menus that are not SidebarMenu variants. */
+  customContextMenuContent?: React.ReactNode
   // Drag-and-drop: flat list reorder (e.g., statuses)
   sortable?: SortableConfig
   // Optional element rendered after the title (e.g., label type icon), revealed on hover
   afterTitle?: React.ReactNode
+  /** Keep the trailing action visible instead of revealing it only on row hover. */
+  afterTitleAlwaysVisible?: boolean
+  /** Interactive row action rendered beside, rather than inside, the navigation button. */
+  trailingAction?: React.ReactNode
   /** Render as a non-navigation section heading with an optional trailing action. */
   sectionHeader?: boolean
 }
@@ -212,7 +218,17 @@ export function LeftSidebar({ links, isCollapsed, getItemProps, focusedItemId, i
           if (link.sectionHeader) {
             return (
               <div key={link.id} className="flex items-center px-2 py-[5px] text-[12px] text-foreground/45">
-                <span className="min-w-0 flex-1 truncate">{link.title}</span>
+                {link.onClick ? (
+                  <button
+                    type="button"
+                    onClick={link.onClick}
+                    className="min-w-0 flex-1 truncate text-left rounded-sm outline-none hover:text-foreground/65 focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    {link.title}
+                  </button>
+                ) : (
+                  <span className="min-w-0 flex-1 truncate">{link.title}</span>
+                )}
                 {link.afterTitle}
               </div>
             )
@@ -238,37 +254,44 @@ export function LeftSidebar({ links, isCollapsed, getItemProps, focusedItemId, i
           // ContextMenuTrigger with asChild sets data-state="open" on the button
           // so only the clicked item highlights, not the entire section.
           const content = (
-            <div className="group/section">
-              {link.contextMenu ? (
+            <div className="group/section relative">
+              {link.contextMenu || link.customContextMenuContent ? (
                 <ContextMenu modal={true}>
                   <ContextMenuTrigger asChild>
                     {buttonElement}
                   </ContextMenuTrigger>
                   <StyledContextMenuContent>
                     <ContextMenuProvider>
-                      <SidebarMenu
-                        type={link.contextMenu.type}
-                        statusId={link.contextMenu.statusId}
-                        labelId={link.contextMenu.labelId}
-                        onConfigureStatuses={link.contextMenu.onConfigureStatuses}
-                        onMarkAllRead={link.contextMenu.onMarkAllRead}
-                        onConfigureLabels={link.contextMenu.onConfigureLabels}
-                        onAddLabel={link.contextMenu.onAddLabel}
-                        onDeleteLabel={link.contextMenu.onDeleteLabel}
-                        onAddSource={link.contextMenu.onAddSource}
-                        onAddSkill={link.contextMenu.onAddSkill}
-                        onAddAutomation={link.contextMenu.onAddAutomation}
-                        onAddProject={link.contextMenu.onAddProject}
-                        sourceType={link.contextMenu.sourceType}
-                        onConfigureViews={link.contextMenu.onConfigureViews}
-                        viewId={link.contextMenu.viewId}
-                        onDeleteView={link.contextMenu.onDeleteView}
-                      />
+                      {link.customContextMenuContent ?? (link.contextMenu && (
+                        <SidebarMenu
+                          type={link.contextMenu.type}
+                          statusId={link.contextMenu.statusId}
+                          labelId={link.contextMenu.labelId}
+                          onConfigureStatuses={link.contextMenu.onConfigureStatuses}
+                          onMarkAllRead={link.contextMenu.onMarkAllRead}
+                          onConfigureLabels={link.contextMenu.onConfigureLabels}
+                          onAddLabel={link.contextMenu.onAddLabel}
+                          onDeleteLabel={link.contextMenu.onDeleteLabel}
+                          onAddSource={link.contextMenu.onAddSource}
+                          onAddSkill={link.contextMenu.onAddSkill}
+                          onAddAutomation={link.contextMenu.onAddAutomation}
+                          onAddProject={link.contextMenu.onAddProject}
+                          sourceType={link.contextMenu.sourceType}
+                          onConfigureViews={link.contextMenu.onConfigureViews}
+                          viewId={link.contextMenu.viewId}
+                          onDeleteView={link.contextMenu.onDeleteView}
+                        />
+                      ))}
                     </ContextMenuProvider>
                   </StyledContextMenuContent>
                 </ContextMenu>
               ) : (
                 buttonElement
+              )}
+              {link.trailingAction && (
+                <span className="absolute right-2 top-1/2 z-10 -translate-y-1/2 opacity-0 transition-opacity group-hover/section:opacity-100 focus-within:opacity-100">
+                  {link.trailingAction}
+                </span>
               )}
               {/* Expandable subitems — outside context menu scope so only the
                 * clicked button gets data-state="open", not nested children */}
@@ -506,6 +529,7 @@ const SidebarButton = React.forwardRef<HTMLButtonElement, SidebarButtonProps & R
           // Compact mode: 4px less total height (py-[3px] vs py-[5px])
           link.compact ? "py-[3px]" : "py-[5px]",
           "px-2",
+          link.trailingAction && "pr-8",
           link.variant === "default"
             ? "bg-foreground/[0.07]"
             // Highlight on hover, context menu open (data-state), or EditPopover active (data-edit-active)
@@ -546,7 +570,12 @@ const SidebarButton = React.forwardRef<HTMLButtonElement, SidebarButtonProps & R
         <span className="min-w-0 truncate">{link.title}</span>
         {/* After-title element: type indicator icon, right-aligned before count badge, revealed on hover */}
         {link.afterTitle && (
-          <span data-touch-reveal="true" className="ml-auto opacity-0 group-hover/section:opacity-100 group-data-[state=open]:opacity-100 group-data-[edit-active=true]:opacity-100 transition-opacity">
+          <span data-touch-reveal="true" className={cn(
+            "ml-auto transition-opacity",
+            link.afterTitleAlwaysVisible
+              ? "opacity-100"
+              : "opacity-0 group-hover/section:opacity-100 group-data-[state=open]:opacity-100 group-data-[edit-active=true]:opacity-100",
+          )}>
             {link.afterTitle}
           </span>
         )}

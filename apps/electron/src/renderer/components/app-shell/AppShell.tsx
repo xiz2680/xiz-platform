@@ -21,6 +21,7 @@ import {
   Zap,
   Inbox,
   Globe,
+  Folder,
   FolderOpen,
   Calendar,
   Layers,
@@ -32,6 +33,7 @@ import {
   MailOpen,
   FolderKanban,
   PanelsTopLeft,
+  MessageCircle,
 } from "lucide-react"
 // SessionStatusIcons no longer used - icons come from dynamic sessionStatuses
 import { SourceAvatar } from "@/components/ui/source-avatar"
@@ -55,13 +57,6 @@ import {
   StyledDropdownMenuSubTrigger,
   StyledDropdownMenuSubContent,
 } from "@/components/ui/styled-dropdown"
-import {
-  ContextMenu,
-  ContextMenuTrigger,
-  StyledContextMenuContent,
-} from "@/components/ui/styled-context-menu"
-import { ContextMenuProvider } from "@/components/ui/menu-context"
-import { SidebarMenu } from "./SidebarMenu"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { FadingText } from "@/components/ui/fading-text"
 import {
@@ -130,6 +125,9 @@ import { PanelHeader } from "./PanelHeader"
 import { FabNewChat } from "./FabNewChat"
 import { SendToWorkspaceDialog } from "./SendToWorkspaceDialog"
 import { CreateProjectDialog } from "../projects/CreateProjectDialog"
+import { RenameDialog } from "@/components/ui/rename-dialog"
+import { SessionMenu } from "./SessionMenu"
+import { hasTransferTargets } from "./transfer-targets"
 import { MessagingDialogHost } from "@/components/messaging/MessagingDialogHost"
 import { EditPopover, getEditConfig, type EditContextKey } from "@/components/ui/EditPopover"
 import SettingsNavigator from "@/pages/settings/SettingsNavigator"
@@ -1445,15 +1443,20 @@ function AppShellContent({
     [workspaceSessionMetas],
   )
 
-  const focusedProjectId = useMemo(() => {
+  const selectedProjectId = useMemo(() => {
     if (isProjectsNavigation(navState) && navState.details) {
       return projects.find((project) => project.config.slug === navState.details?.projectSlug)?.config.id ?? null
     }
+    return null
+  }, [navState, projects])
+
+  const focusedProjectId = useMemo(() => {
+    if (selectedProjectId) return selectedProjectId
     if (isSessionsNavigation(navState) && navState.details?.sessionId) {
       return sessionMetaMap.get(navState.details.sessionId)?.projectId ?? null
     }
     return null
-  }, [navState, projects, sessionMetaMap])
+  }, [navState, selectedProjectId, sessionMetaMap])
 
   // Project navigation lives in the primary sidebar, so the middle navigator is
   // redundant for both a project detail page and one of its conversations.
@@ -1757,13 +1760,17 @@ function AppShellContent({
   const handleProjectClick = useCallback((projectId: string, projectSlug: string) => {
     const itemId = `nav:project:${projectId}`
     setCollapsedItems((prev) => {
-      if (!prev.has(itemId)) return prev
       const next = new Set(prev)
-      next.delete(itemId)
+      if (selectedProjectId === projectId) {
+        if (next.has(itemId)) next.delete(itemId)
+        else next.add(itemId)
+      } else {
+        next.delete(itemId)
+      }
       return next
     })
     navigate(routes.view.projects(projectSlug))
-  }, [])
+  }, [selectedProjectId])
 
   // Handler for pages view
   const handlePagesClick = useCallback(() => {
@@ -1919,15 +1926,16 @@ function AppShellContent({
   // The previous flow auto-created with the default name and produced ugly
   // permanent slugs (new-project, new-project-1, …).
   const [createProjectDialogOpen, setCreateProjectDialogOpen] = useState(false)
+  const [sidebarRenameSession, setSidebarRenameSession] = useState<{ id: string; name: string } | null>(null)
   const openAddProject = useCallback(() => {
     if (!activeWorkspace?.id) return
     setCreateProjectDialogOpen(true)
   }, [activeWorkspace?.id])
-  const handleCreateProjectSubmit = useCallback(async (name: string) => {
+  const handleCreateProjectSubmit = useCallback(async (input: { name: string; workingDirectory: string }) => {
     if (!activeWorkspace?.id) return
     setCreateProjectDialogOpen(false)
     try {
-      const project = await window.electronAPI.createProject(activeWorkspace.id, { name })
+      const project = await window.electronAPI.createProject(activeWorkspace.id, input)
       navigate(routes.view.projects(project.slug))
     } catch (err) {
       console.error('[AppShell] Failed to create project:', err)
@@ -1965,6 +1973,31 @@ function AppShellContent({
     // Focus the chat input after navigation completes
     setTimeout(() => focusZone('chat', { intent: 'programmatic' }), 50)
   }, [activeWorkspace, focusZone, navigate, resolveInheritedNewSessionParams])
+
+  // Explicit global/project entry points intentionally bypass list filters.
+  // Project binding causes the backend to inherit the project's working directory.
+  const handleGlobalNewChat = useCallback(() => {
+    if (!activeWorkspace) return
+    setSearchActive(false)
+    setSearchQuery('')
+    navigate(routes.action.newSession())
+    setTimeout(() => focusZone('chat', { intent: 'programmatic' }), 50)
+  }, [activeWorkspace, focusZone])
+
+  const handleProjectNewChat = useCallback((projectId: string) => {
+    if (!activeWorkspace) return
+    setSearchActive(false)
+    setSearchQuery('')
+    navigate(routes.action.newSession({ project: projectId }))
+    setTimeout(() => focusZone('chat', { intent: 'programmatic' }), 50)
+  }, [activeWorkspace, focusZone])
+
+  const handleSidebarRenameSubmit = useCallback(() => {
+    if (!sidebarRenameSession) return
+    const name = sidebarRenameSession.name.trim()
+    if (name) onRenameSession(sidebarRenameSession.id, name)
+    setSidebarRenameSession(null)
+  }, [onRenameSession, sidebarRenameSession])
 
   // Create a brand new dedicated browser window and focus it.
   // Intentionally unbound: this action should always create a NEW window.
@@ -2023,16 +2056,13 @@ function AppShellContent({
   const unifiedSidebarItems = React.useMemo((): SidebarItem[] => {
     const result: SidebarItem[] = []
 
-    // 1. Unprojected, active conversations
-    result.push({ id: 'nav:allSessions', type: 'nav', action: handleAllSessionsClick })
-
-    // 2. Workspace tools
+    // 1. Workspace tools
     result.push({ id: 'nav:sources', type: 'nav', action: handleSourcesClick })
     result.push({ id: 'nav:skills', type: 'nav', action: handleSkillsClick })
     result.push({ id: 'nav:pages', type: 'nav', action: handlePagesClick })
     result.push({ id: 'nav:automations', type: 'nav', action: handleAutomationsClick })
 
-    // 3. Projects and their conversations
+    // 2. Projects and their conversations
     for (const project of projects) {
       result.push({
         id: `nav:project:${project.config.id}`,
@@ -2045,6 +2075,9 @@ function AppShellContent({
         }
       }
     }
+
+    // 3. All Sessions follows the complete project tree.
+    result.push({ id: 'nav:allSessions', type: 'nav', action: handleAllSessionsClick })
 
     // 4. Settings is visually pinned to the bottom.
     result.push({ id: 'nav:settings', type: 'nav', action: () => handleSettingsClick() })
@@ -2266,34 +2299,6 @@ function AppShellContent({
             <div className="flex h-full flex-col select-none">
               {/* Sidebar Top Section */}
               <div className="flex-1 flex flex-col min-h-0">
-                {/* New Session Button - Gmail-style, with context menu for "Open in New Window" */}
-                <div className="px-2 pb-2 shrink-0">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <ContextMenu modal={true}>
-                          <ContextMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              onClick={(e) => handleNewChat(e.metaKey || e.ctrlKey)}
-                              className="w-full justify-start gap-2 py-[7px] px-2 text-[13px] font-normal rounded-[6px] shadow-minimal bg-background"
-                              data-tutorial="new-chat-button"
-                            >
-                              <SquarePenRounded className="h-3.5 w-3.5 shrink-0" />
-                              {t("session.newSession")}
-                            </Button>
-                          </ContextMenuTrigger>
-                          <StyledContextMenuContent>
-                            <ContextMenuProvider>
-                              <SidebarMenu type="newSession" />
-                            </ContextMenuProvider>
-                          </StyledContextMenuContent>
-                        </ContextMenu>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">{newChatHotkey}</TooltipContent>
-                  </Tooltip>
-                </div>
                 {/* Primary navigation scrolls independently; Settings stays pinned below it. */}
                 {/* pb-4 provides clearance so the last item scrolls above the mask-fade-bottom gradient */}
                 <div className="flex-1 overflow-y-auto min-h-0 mask-fade-bottom pb-4">
@@ -2302,35 +2307,6 @@ function AppShellContent({
                   getItemProps={getSidebarItemProps}
                   focusedItemId={focusedSidebarItemId}
                   links={[
-                    // --- Unprojected Sessions ---
-                    {
-                      id: "nav:allSessions",
-                      title: t("sidebar.allSessions"),
-                      label: String(unprojectedSessionMetas.length),
-                      icon: Inbox,
-                      variant: sessionFilter?.kind === 'allSessions' && !focusedProjectId ? "default" : "ghost",
-                      onClick: handleAllSessionsClick,
-                      contextMenu: {
-                        type: 'allSessions',
-                        onConfigureStatuses: openConfigureStatuses,
-                        onMarkAllRead: () => {
-                          if (!activeWorkspaceId) return
-                          // Optimistic: clear hasUnread on all workspace session metas
-                          setSessionMetaMap(prev => {
-                            const next = new Map(prev)
-                            for (const [id, meta] of next) {
-                              if (meta.workspaceId === activeWorkspaceId && meta.hasUnread) {
-                                next.set(id, { ...meta, hasUnread: false })
-                              }
-                            }
-                            return next
-                          })
-                          window.electronAPI.markAllSessionsRead(activeWorkspaceId)
-                        },
-                      },
-                    },
-                    // --- Separator ---
-                    { id: "separator:chats-sources", type: "separator" },
                     // --- Workspace Tools ---
                     {
                       id: "nav:sources",
@@ -2488,20 +2464,88 @@ function AppShellContent({
                       return {
                         id: projectItemId,
                         title: project.config.name,
-                        variant: focusedProjectId === project.config.id ? "default" as const : "ghost" as const,
+                        icon: Folder,
+                        variant: selectedProjectId === project.config.id ? "default" as const : "ghost" as const,
                         onClick: () => handleProjectClick(project.config.id, project.config.slug),
                         expandable: projectSessions.length > 0,
                         expanded: isExpanded(projectItemId),
                         onToggle: () => toggleExpanded(projectItemId),
+                        trailingAction: (
+                          <button
+                            type="button"
+                            aria-label={t("projectInfo.newSessionButton", { name: project.config.name })}
+                            title={t("projectInfo.newSessionButton", { name: project.config.name })}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleProjectNewChat(project.config.id)
+                            }}
+                            className="rounded p-0.5 text-foreground/50 hover:bg-foreground/10 hover:text-foreground"
+                          >
+                            <SquarePenRounded className="h-3.5 w-3.5" />
+                          </button>
+                        ),
                         items: projectSessions.map((meta) => ({
                           id: `nav:project-session:${meta.id}`,
                           title: meta.name || meta.id,
-                          variant: effectiveSessionId === meta.id ? "default" as const : "ghost" as const,
+                          variant: isSessionsNavigation(navState) && navState.details?.sessionId === meta.id
+                            ? "default" as const
+                            : "ghost" as const,
                           onClick: () => navigate(routes.view.allSessions(meta.id)),
                           compact: true,
+                          customContextMenuContent: (
+                            <SessionMenu
+                              item={meta}
+                              sessionStatuses={effectiveSessionStatuses}
+                              labels={displayLabelConfigs}
+                              onLabelsChange={(labels) => handleSessionLabelsChange(meta.id, labels)}
+                              onRename={() => setSidebarRenameSession({ id: meta.id, name: getSessionTitle(meta) })}
+                              onFlag={() => onFlagSession(meta.id)}
+                              onUnflag={() => onUnflagSession(meta.id)}
+                              onArchive={() => onArchiveSession(meta.id)}
+                              onUnarchive={() => onUnarchiveSession(meta.id)}
+                              onMarkUnread={() => onMarkSessionUnread(meta.id)}
+                              onSessionStatusChange={(status) => onSessionStatusChange(meta.id, status)}
+                              onOpenInNewWindow={() => {
+                                if (activeWorkspaceId) window.electronAPI.openSessionInNewWindow(activeWorkspaceId, meta.id)
+                              }}
+                              onSendToWorkspace={() => setSendToWorkspaceIds([meta.id])}
+                              hasTransferTargets={hasTransferTargets(workspaces)}
+                              onDelete={() => { void handleDeleteSession(meta.id) }}
+                              projects={projectMenuOptions}
+                              onSetProjectId={(projectId) => { void handleSessionProjectChange(meta.id, projectId) }}
+                            />
+                          ),
                         })),
                       }
                     }),
+                    // --- All Sessions: after the complete project list ---
+                    {
+                      id: "nav:allSessions",
+                      title: t("sidebar.allSessions"),
+                      variant: "ghost" as const,
+                      sectionHeader: true,
+                      onClick: handleAllSessionsClick,
+                      afterTitle: (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              aria-label={t("session.newSession")}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                handleGlobalNewChat()
+                              }}
+                              className="rounded p-0.5 text-foreground/50 hover:bg-foreground/10 hover:text-foreground"
+                              data-tutorial="new-chat-button"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">{newChatHotkey}</TooltipContent>
+                        </Tooltip>
+                      ),
+                      afterTitleAlwaysVisible: true,
+                    },
                   ]}
                 />
                 {/* Agent Tree: Hierarchical list of agents */}
@@ -3562,8 +3606,21 @@ function AppShellContent({
       {/* Create Project dialog — prompts for a name so slugs stay meaningful */}
       <CreateProjectDialog
         open={createProjectDialogOpen}
+        workspaceId={activeWorkspaceId ?? undefined}
         onCancel={() => setCreateProjectDialogOpen(false)}
         onSubmit={handleCreateProjectSubmit}
+      />
+
+      <RenameDialog
+        open={sidebarRenameSession !== null}
+        onOpenChange={(open) => { if (!open) setSidebarRenameSession(null) }}
+        title={t("session.renameSession")}
+        value={sidebarRenameSession?.name ?? ''}
+        onValueChange={(name) => {
+          setSidebarRenameSession((current) => current ? { ...current, name } : current)
+        }}
+        onSubmit={handleSidebarRenameSubmit}
+        placeholder={t("session.enterSessionName")}
       />
 
       {/* Messaging dialogs (pairing-code + WA connect) — driven by messagingDialogAtom.

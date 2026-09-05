@@ -49,7 +49,7 @@ export interface PrerequisiteManagerConfig {
 const EXEMPT_SLUGS = new Set(['session']);
 
 /** Global browser tools docs path required before browser tool usage. */
-const BROWSER_TOOLS_DOC_PATH = resolve(join(homedir(), '.craft-agent', 'docs', 'browser-tools.md'));
+const BROWSER_TOOLS_DOC_PATH = resolve(join(process.env.CRAFT_CONFIG_DIR || join(homedir(), '.craft-agent'), 'docs', 'browser-tools.md'));
 
 // ============================================================
 // Rules
