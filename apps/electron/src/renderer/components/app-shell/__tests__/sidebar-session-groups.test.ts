@@ -7,10 +7,17 @@ import {
 
 const meta = (overrides: Partial<SessionMeta> & Pick<SessionMeta, 'id'>): SessionMeta => ({
   workspaceId: 'workspace-1',
+  messageCount: 1,
   ...overrides,
 })
 
 describe('sidebar session groups', () => {
+  test('draft-only sessions stay hidden until the first sent message', () => {
+    const draft = meta({ id: 'draft', projectId: 'project-1', messageCount: 0 })
+    expect(groupActiveProjectSessions([draft]).size).toBe(0)
+    expect(getUnprojectedActiveSessions([{ ...draft, projectId: undefined }])).toEqual([])
+    expect(groupActiveProjectSessions([{ ...draft, messageCount: 1 }]).get('project-1')?.[0]?.id).toBe('draft')
+  })
   test('All Sessions includes only active conversations without a project', () => {
     const sessions = [
       meta({ id: 'unprojected' }),

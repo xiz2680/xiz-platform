@@ -493,7 +493,9 @@ html[data-font="inter"] {
 
   html, body, #root {
     height: 100%;
-    overflow: hidden;
+    /* Only panels scroll. Focusing a composer must not scroll the app shell
+       itself and move the fixed new-session entry under the title bar. */
+    overflow: clip;
   }
 
   body {

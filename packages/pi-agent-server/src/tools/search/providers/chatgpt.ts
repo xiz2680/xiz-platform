@@ -217,6 +217,7 @@ async function parseResponsePayload(response: Response): Promise<ResponsesApiRes
   const looksLikeSse =
     contentType.includes('text/event-stream') ||
     raw.startsWith('event:') ||
+    raw.startsWith('data:') ||
     raw.includes('\ndata:') ||
     raw.includes('\n\nevent:');
 
@@ -233,6 +234,10 @@ async function parseResponsePayload(response: Response): Promise<ResponsesApiRes
 
 function parseSseResponsePayload(sseText: string): ResponsesApiResponse {
   let completed: ResponsesApiResponse | null = null;
+  // Some Codex responses emit the results only as item events, followed by
+  // response.completed with an empty output array. Keep completed items until
+  // the terminal event confirms that the stream actually finished.
+  const outputItems = new Map<number, NonNullable<ResponsesApiResponse['output']>[number]>();
 
   for (const chunk of sseText.split('\n\n')) {
     const dataLines = chunk
@@ -251,6 +256,11 @@ function parseSseResponsePayload(sseText: string): ResponsesApiResponse {
         continue;
       }
 
+      if (event?.type === 'response.output_item.done' && event.item &&
+          Number.isInteger(event.output_index) && event.output_index >= 0) {
+        outputItems.set(event.output_index, event.item);
+      }
+
       if (event?.type === 'response.completed' || event?.type === 'response.done') {
         if (event.response && typeof event.response === 'object') {
           completed = event.response as ResponsesApiResponse;
@@ -263,6 +273,12 @@ function parseSseResponsePayload(sseText: string): ResponsesApiResponse {
     throw new Error('ChatGPT search stream returned no completed response payload');
   }
 
+  if (!completed.output?.length && outputItems.size > 0) {
+    return {
+      ...completed,
+      output: [...outputItems.entries()].sort(([a], [b]) => a - b).map(([, item]) => item),
+    };
+  }
   return completed;
 }
 

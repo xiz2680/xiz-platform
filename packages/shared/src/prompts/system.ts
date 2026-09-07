@@ -446,6 +446,11 @@ export function formatProjectContextForPrompt(ctx: ProjectPromptContext): string
   const lines: string[] = [];
   lines.push('');
   lines.push(`<project_context project="${escapeAttr(ctx.name)}">`);
+  if (ctx.workingDirectories?.length) {
+    lines.push('Project folders (first is the default command working directory). Use absolute paths for other folders and read their AGENTS.md/CLAUDE.md before editing:');
+    for (const path of ctx.workingDirectories) lines.push(`- ${escapeAttr(sanitizeProjectFilename(path))}`);
+    lines.push('');
+  }
   if (ctx.description?.trim()) {
     lines.push(sanitizeProjectBodyText(ctx.description.trim()));
     lines.push('');

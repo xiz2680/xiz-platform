@@ -20,6 +20,7 @@ const TOOL_DISPLAY_NAMES: Record<string, string> = {
   'Agent': 'Running Agent',
   'WebFetch': 'Fetching URL',
   'WebSearch': 'Searching Web',
+  'GenerateImage': 'Generating Image',
   'TodoWrite': 'Updating Tasks',
   'NotebookEdit': 'Editing Notebook',
 };

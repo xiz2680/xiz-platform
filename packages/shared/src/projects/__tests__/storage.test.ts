@@ -13,10 +13,46 @@ import {
   getProjectMemoryPath,
   loadProjectMemory,
   sanitizeAssetFilename,
+  loadProjectConfig,
+  updateProject,
+  saveProjectConfig,
 } from '../storage.ts';
 
 let tempDir: string;
 let workspaceRoot: string;
+
+describe('multiple project folders', () => {
+  it('round-trips folders, removes duplicates and retains the first as cwd', () => {
+    const project = createProject(workspaceRoot, { name: 'Folders', workingDirectories: [tempDir, tmpdir(), tempDir] });
+    const loaded = loadProjectConfig(workspaceRoot, project.slug)!;
+    expect(loaded.workingDirectories).toEqual([tempDir, tmpdir()]);
+    expect(loaded.workingDirectory).toBe(tempDir);
+    const updated = updateProject(workspaceRoot, project.slug, { workingDirectories: [tmpdir()] });
+    expect(updated.workingDirectory).toBe(tmpdir());
+    expect(loadProjectConfig(workspaceRoot, project.slug)?.workingDirectories).toEqual([tmpdir()]);
+  });
+  it('retains folder lists on unrelated edits and supports clearing', () => {
+    const project = createProject(workspaceRoot, { name: 'Folders', workingDirectories: [tempDir, tmpdir()] });
+    expect(updateProject(workspaceRoot, project.slug, { name: 'Renamed' }).workingDirectories).toEqual([tempDir, tmpdir()]);
+    updateProject(workspaceRoot, project.slug, { workingDirectories: [] });
+    expect(loadProjectConfig(workspaceRoot, project.slug)?.workingDirectory).toBeUndefined();
+    expect(loadProjectConfig(workspaceRoot, project.slug)?.workingDirectories).toEqual([]);
+  });
+  it('supports legacy scalar inputs', () => {
+    const project = createProject(workspaceRoot, { name: 'Legacy', workingDirectory: tempDir });
+    expect(loadProjectConfig(workspaceRoot, project.slug)?.workingDirectories).toEqual([tempDir]);
+    const legacy = { ...project, workingDirectory: tmpdir(), workingDirectories: undefined };
+    saveProjectConfig(workspaceRoot, legacy);
+    expect(loadProjectConfig(workspaceRoot, project.slug)?.workingDirectories).toEqual([tmpdir()]);
+  });
+  it('rejects missing paths and files without overwriting the project', () => {
+    const project = createProject(workspaceRoot, { name: 'Folders', workingDirectories: [tempDir] });
+    const file = join(tempDir, 'file.txt'); writeFileSync(file, 'test');
+    expect(() => updateProject(workspaceRoot, project.slug, { workingDirectories: [file] })).toThrow('Invalid project folder');
+    expect(() => updateProject(workspaceRoot, project.slug, { workingDirectories: [join(tempDir, 'missing')] })).toThrow('Invalid project folder');
+    expect(loadProjectConfig(workspaceRoot, project.slug)?.workingDirectories).toEqual([tempDir]);
+  });
+});
 
 beforeEach(() => {
   tempDir = mkdtempSync(join(tmpdir(), 'projects-test-'));

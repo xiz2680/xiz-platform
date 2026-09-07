@@ -104,6 +104,7 @@ export const BUILT_IN_TOOLS = new Set([
   'Grep',
   'WebFetch',
   'WebSearch',
+  'GenerateImage',
   'Task',
   'TaskOutput',
   'TodoWrite',

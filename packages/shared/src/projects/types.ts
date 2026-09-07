@@ -40,6 +40,8 @@ export interface ProjectConfig {
   description?: string;
   /** Absolute path bound to this project; new sessions inherit it when not overridden */
   workingDirectory?: string;
+  /** Ordered project folders; first is the default working directory. */
+  workingDirectories?: string[];
   /** Free-form text injected into the system prompt as project context */
   details?: string;
   /** Optional color theme ID for project-branded UI */
@@ -73,6 +75,7 @@ export interface CreateProjectInput {
   name: string;
   description?: string;
   workingDirectory?: string;
+  workingDirectories?: string[];
   details?: string;
   colorTheme?: string;
   color?: string;
@@ -98,6 +101,7 @@ export interface LoadedProject {
  * Decoupled from ProjectConfig so prompt builders can be tested in isolation.
  */
 export interface ProjectPromptContext {
+  workingDirectories?: string[];
   name: string;
   description?: string;
   details?: string;

@@ -240,7 +240,7 @@ export function PanelStackContainer({
           }}
         >
           <div className="h-full" style={{ width: navigatorWidth }}>
-            {navigatorSlot}
+            {hasNavigator && navigatorSlot}
           </div>
         </motion.div>
 

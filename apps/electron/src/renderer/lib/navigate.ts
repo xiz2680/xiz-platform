@@ -24,6 +24,8 @@ export const NAVIGATE_EVENT = 'craft-agent-navigate'
 export interface NavigateOptions {
   /** Open the target in a new panel instead of navigating the current one */
   newPanel?: boolean
+  /** Replace the open content panels with this route (project primary navigation). */
+  replacePanels?: boolean
   /**
    * Optional explicit lane target for new-panel opens.
    *

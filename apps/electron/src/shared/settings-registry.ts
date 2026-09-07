@@ -46,6 +46,7 @@ export const SETTINGS_PAGES = [
   { id: 'server' as const, labelKey: 'settings.server.title', descriptionKey: 'settings.server.description' },
   { id: 'shortcuts' as const, labelKey: 'settings.shortcuts.title', descriptionKey: 'settings.shortcuts.description' },
   { id: 'preferences' as const, labelKey: 'settings.preferences.title', descriptionKey: 'settings.preferences.description' },
+  { id: 'archived' as const, labelKey: 'sidebar.archived', descriptionKey: 'session.noArchivedSessionsDesc' },
 ] satisfies readonly SettingsPageDefinition[]
 
 /**

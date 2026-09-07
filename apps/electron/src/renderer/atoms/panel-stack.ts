@@ -150,15 +150,20 @@ export const pushPanelAtom = atom(
       insertAt = afterIndex + 1
     }
 
-    const newEntry = createEntry(route, 0)
+    const newPanelProportion = 1 / (stack.length + 1)
+    const existingPanelProportion = 1 - newPanelProportion
+    const resizedStack = normalizeProportions(stack).map((entry) => ({
+      ...entry,
+      proportion: entry.proportion * existingPanelProportion,
+    }))
+    const newEntry = createEntry(route, newPanelProportion)
     const newStack = [
-      ...stack.slice(0, insertAt),
+      ...resizedStack.slice(0, insertAt),
       newEntry,
-      ...stack.slice(insertAt),
+      ...resizedStack.slice(insertAt),
     ]
 
-    const normalized = normalizeProportions(newStack)
-    set(panelStackAtom, normalized)
+    set(panelStackAtom, newStack)
     set(focusedPanelIdAtom, newEntry.id)
   }
 )
