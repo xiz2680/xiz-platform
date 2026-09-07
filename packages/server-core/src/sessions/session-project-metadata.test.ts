@@ -16,7 +16,7 @@ describe('session project metadata response', () => {
         projectId: 'project-1',
         workingDirectory: '/tmp/project-1',
         createdAt: Date.now(),
-        lastUsedAt: Date.now(),
+        lastMessageAt: Date.now(),
       },
       workspace as never,
       { messagesLoaded: true },
