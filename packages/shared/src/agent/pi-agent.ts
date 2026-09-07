@@ -207,6 +207,7 @@ export class PiAgent extends BaseAgent {
       const slug = project.config.slug;
       return {
         name: project.config.name,
+        workingDirectories: project.config.workingDirectories,
         description: project.config.description,
         details: project.config.details,
         assetsPath: getProjectAssetsPath(root, slug),

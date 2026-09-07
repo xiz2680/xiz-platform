@@ -52,6 +52,7 @@ export function registerProjectsHandlers(server: RpcServer, deps: HandlerDeps): 
       name: input.name?.trim() || 'New Project',
       description: input.description,
       workingDirectory: input.workingDirectory,
+      workingDirectories: input.workingDirectories,
       details: input.details,
       colorTheme: input.colorTheme,
     })

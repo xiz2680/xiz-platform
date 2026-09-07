@@ -12,6 +12,7 @@ import { useAtomValue } from 'jotai'
 import { FolderKanban, FolderOpen, Plus, Trash2, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { useActiveWorkspace, useAppShellContext } from '@/context/AppShellContext'
+import { ProjectDirectoryPicker } from '@/components/projects/ProjectDirectoryPicker'
 import { navigate, routes } from '@/lib/navigate'
 import { sessionMetaMapAtom } from '@/atoms/sessions'
 import { hasSessionInteraction } from '@/components/app-shell/sidebar-session-groups'
@@ -49,7 +50,7 @@ export default function ProjectInfoPage({ projectSlug }: ProjectInfoPageProps) {
   const [assets, setAssets] = useState<ProjectAsset[]>([])
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
-  const [editWorkingDir, setEditWorkingDir] = useState('')
+  const [editWorkingDirs, setEditWorkingDirs] = useState<string[]>([])
   const [editDetails, setEditDetails] = useState('')
   const [editColor, setEditColor] = useState<string>('')
   const [saving, setSaving] = useState(false)
@@ -70,7 +71,7 @@ export default function ProjectInfoPage({ projectSlug }: ProjectInfoPageProps) {
       setProject(loaded)
       setEditName(loaded.config.name)
       setEditDescription(loaded.config.description ?? '')
-      setEditWorkingDir(loaded.config.workingDirectory ?? '')
+      setEditWorkingDirs(loaded.config.workingDirectories ?? (loaded.config.workingDirectory ? [loaded.config.workingDirectory] : []))
       setEditDetails(loaded.config.details ?? '')
       setEditColor(loaded.config.color ?? '')
     } catch (err) {
@@ -134,17 +135,6 @@ export default function ProjectInfoPage({ projectSlug }: ProjectInfoPageProps) {
     }
   }, [workspaceId, project, onCreateSession, t])
 
-  const handlePickWorkingDirectory = useCallback(async () => {
-    try {
-      const picked = await window.electronAPI.openFolderDialog?.()
-      if (typeof picked === 'string' && picked.trim()) {
-        setEditWorkingDir(picked)
-      }
-    } catch (err) {
-      console.error('[ProjectInfoPage] Folder picker failed:', err)
-    }
-  }, [])
-
   const handleSaveSettings = useCallback(async () => {
     if (!workspaceId || !project) return
     setSaving(true)
@@ -152,7 +142,8 @@ export default function ProjectInfoPage({ projectSlug }: ProjectInfoPageProps) {
       await window.electronAPI.updateProject(workspaceId, project.config.slug, {
         name: editName.trim() || project.config.name,
         description: editDescription.trim() || undefined,
-        workingDirectory: editWorkingDir.trim() || undefined,
+        workingDirectory: editWorkingDirs[0],
+        workingDirectories: editWorkingDirs,
         details: editDetails.trim() || undefined,
         color: editColor.trim() || undefined,
       })
@@ -163,7 +154,7 @@ export default function ProjectInfoPage({ projectSlug }: ProjectInfoPageProps) {
     } finally {
       setSaving(false)
     }
-  }, [workspaceId, project, editName, editDescription, editWorkingDir, editDetails, editColor, t])
+  }, [workspaceId, project, editName, editDescription, editWorkingDirs, editDetails, editColor, t])
 
   const handleDeleteProject = useCallback(async () => {
     if (!workspaceId || !project) return
@@ -338,18 +329,7 @@ export default function ProjectInfoPage({ projectSlug }: ProjectInfoPageProps) {
                   />
                 </Field>
                 <Field label={t('projectInfo.workingDirectory')}>
-                  <div className="flex gap-2">
-                    <Input
-                      value={editWorkingDir}
-                      onChange={(e) => setEditWorkingDir(e.target.value)}
-                      placeholder={t('projectInfo.workingDirectoryPlaceholder')}
-                      className="flex-1"
-                    />
-                    <Button size="sm" variant="outline" onClick={handlePickWorkingDirectory}>
-                      <FolderOpen className="h-3.5 w-3.5 mr-1" />
-                      {t('projectInfo.workingDirectoryPicker')}
-                    </Button>
-                  </div>
+                  <ProjectDirectoryPicker value={editWorkingDirs} onChange={setEditWorkingDirs} />
                 </Field>
                 <Field
                   label={t('projectInfo.color')}

@@ -59,6 +59,8 @@ export interface WorkingDirectorySelectorProps {
   side?: 'top' | 'bottom' | 'left' | 'right'
   align?: 'start' | 'center' | 'end'
   sideOffset?: number
+  /** Layer override when the picker is used inside a modal dialog. */
+  contentClassName?: string
 }
 
 /**
@@ -78,6 +80,7 @@ export function WorkingDirectorySelector({
   side = 'top',
   align = 'start',
   sideOffset = 8,
+  contentClassName,
 }: WorkingDirectorySelectorProps) {
   const { t } = useTranslation()
   const [popoverOpen, setPopoverOpen] = React.useState(false)
@@ -135,7 +138,7 @@ export function WorkingDirectorySelector({
         <PopoverTrigger asChild>
           {renderTrigger({ open: popoverOpen, hasFolder, folderName, workingDirectory, homeDir, gitBranch })}
         </PopoverTrigger>
-        <PopoverContent side={side} align={align} sideOffset={sideOffset} className={MENU_CONTAINER_STYLE}>
+        <PopoverContent side={side} align={align} sideOffset={sideOffset} className={cn(MENU_CONTAINER_STYLE, contentClassName)}>
           <CommandPrimitive shouldFilter={showFilter}>
             {/* Filter input - only shown when more than 5 recent folders */}
             {showFilter && (

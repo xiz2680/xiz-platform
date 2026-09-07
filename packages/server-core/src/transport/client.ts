@@ -19,6 +19,7 @@ import {
 } from '@xiz-platform/shared/protocol'
 import type { RpcClient } from './types'
 import { serializeEnvelope, deserializeEnvelope } from './codec'
+import { requestTimeoutForChannel } from './request-timeout'
 
 // ---------------------------------------------------------------------------
 // Pending request state
@@ -184,10 +185,11 @@ export class WsRpcClient implements RpcClient {
       }
 
       const id = crypto.randomUUID()
+      const timeoutMs = requestTimeoutForChannel(channel, this.requestTimeout)
       const timeout = setTimeout(() => {
         this.pending.delete(id)
-        reject(new Error(`Request timeout: ${channel} (${this.requestTimeout}ms)`))
-      }, this.requestTimeout)
+        reject(new Error(`Request timeout: ${channel} (${timeoutMs}ms)`))
+      }, timeoutMs)
 
       this.pending.set(id, { resolve, reject, timeout })
 

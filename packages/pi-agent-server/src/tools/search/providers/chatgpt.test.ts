@@ -52,6 +52,43 @@ describe('extractChatGptAccountId', () => {
 });
 
 describe('ChatGPTBackendSearchProvider', () => {
+  for (const terminalOutput of [undefined, []]) {
+    it(`recovers streamed items when terminal output is ${terminalOutput ? 'empty' : 'missing'}`, async () => {
+      let calls = 0;
+      const item = (url: string) => ({ type: 'message', content: [{ type: 'output_text', text: 'Source', annotations: [{ type: 'url_citation', url, title: 'Source' }] }] });
+      const events = [
+        { type: 'response.output_item.done', output_index: 2, item: item('https://example.com/second') },
+        { type: 'response.output_item.done', output_index: 0, item: { type: 'reasoning' } },
+        { type: 'response.output_item.done', output_index: 1, item: item('https://example.com/first') },
+        { type: 'response.output_item.done', output_index: 1, item: item('https://example.com/first') },
+        { type: 'response.completed', response: { output: terminalOutput } },
+      ];
+      globalThis.fetch = (async () => {
+        calls++;
+        // Missing content-type matches the live Codex response.
+        return new Response(new TextEncoder().encode(events.map(e => `data: ${JSON.stringify(e)}\r\n\r\n`).join('')));
+      }) as typeof fetch;
+      const results = await new ChatGPTBackendSearchProvider('token', 'account').search('test', 3);
+      expect(results.map(r => r.url)).toEqual(['https://example.com/first', 'https://example.com/second']);
+      expect(calls).toBe(1);
+    });
+  }
+
+  it('does not accept item events from a stream without completion', async () => {
+    globalThis.fetch = (async () => new Response('data: {"type":"response.output_item.done","output_index":0,"item":{"type":"message","content":[{"text":"Partial"}]}}\n\n')) as typeof fetch;
+    await expect(new ChatGPTBackendSearchProvider('token', 'account').search('test', 3)).rejects.toThrow('no completed response payload');
+  });
+
+  it('prefers the final output snapshot when it is populated', async () => {
+    const item = (text: string) => ({ type: 'message', content: [{ type: 'output_text', text }] });
+    globalThis.fetch = (async () => new Response([
+      { type: 'response.output_item.done', output_index: 0, item: item('Earlier') },
+      { type: 'response.completed', response: { output: [item('Final')] } },
+    ].map(e => `data: ${JSON.stringify(e)}\n\n`).join(''))) as typeof fetch;
+    const results = await new ChatGPTBackendSearchProvider('token', 'account').search('test', 3);
+    expect(results[0]?.description).toBe('Final');
+  });
+
   it('calls ChatGPT backend endpoint with correct auth headers', async () => {
     let calledUrl = '';
     let calledHeaders: Record<string, string> = {};

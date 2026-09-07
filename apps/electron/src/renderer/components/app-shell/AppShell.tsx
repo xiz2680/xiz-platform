@@ -1717,10 +1717,6 @@ function AppShellContent({
     navigate(routes.view.flagged())
   }, [])
 
-  const handleArchivedClick = useCallback(() => {
-    navigate(routes.view.archived())
-  }, [])
-
   // Handler for label filter views (hierarchical — includes descendant labels)
   const handleLabelClick = useCallback((labelId: string) => {
     navigate(routes.view.label(labelId))
@@ -1932,11 +1928,11 @@ function AppShellContent({
     if (!activeWorkspace?.id) return
     setCreateProjectDialogOpen(true)
   }, [activeWorkspace?.id])
-  const handleCreateProjectSubmit = useCallback(async (input: { name: string; workingDirectory: string }) => {
+  const handleCreateProjectSubmit = useCallback(async (input: { name: string; workingDirectory: string; workingDirectories: string[] }) => {
     if (!activeWorkspace?.id) return
-    setCreateProjectDialogOpen(false)
     try {
       const project = await window.electronAPI.createProject(activeWorkspace.id, input)
+      setCreateProjectDialogOpen(false)
       navigate(routes.view.projects(project.slug))
     } catch (err) {
       console.error('[AppShell] Failed to create project:', err)
@@ -3273,7 +3269,6 @@ function AppShellContent({
               <SettingsNavigator
                 selectedSubpage={navState.subpage}
                 onSelectSubpage={(subpage) => handleSettingsClick(subpage)}
-                onSelectArchived={handleArchivedClick}
               />
             )}
             {isSessionsNavigation(navState) && (

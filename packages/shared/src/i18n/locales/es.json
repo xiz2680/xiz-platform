@@ -840,6 +840,7 @@
   "projectsList.createDialogNameRequired": "Introduce un nombre para el proyecto.",
   "projectsList.createDialogTitle": "Nuevo proyecto",
   "projectsList.createDialogWorkingDirectoryLabel": "Directorio de trabajo",
+  "projectsList.addFolder": "Añadir carpeta",
   "projectsList.createDialogWorkingDirectoryPlaceholder": "Elegir una carpeta…",
   "projectsList.createDialogWorkingDirectoryRequired": "Elige un directorio de trabajo.",
   "projectsList.createFailed": "Error al crear el proyecto",

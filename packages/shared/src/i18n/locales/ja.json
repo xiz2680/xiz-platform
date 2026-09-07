@@ -840,6 +840,7 @@
   "projectsList.createDialogNameRequired": "プロジェクト名を入力してください。",
   "projectsList.createDialogTitle": "新しいプロジェクト",
   "projectsList.createDialogWorkingDirectoryLabel": "作業ディレクトリ",
+  "projectsList.addFolder": "フォルダーを追加",
   "projectsList.createDialogWorkingDirectoryPlaceholder": "フォルダを選択…",
   "projectsList.createDialogWorkingDirectoryRequired": "作業ディレクトリを選択してください。",
   "projectsList.createFailed": "プロジェクトの作成に失敗しました",

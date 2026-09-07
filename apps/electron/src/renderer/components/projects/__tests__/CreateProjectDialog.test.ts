@@ -2,8 +2,8 @@ import { describe, expect, it, mock } from 'bun:test'
 
 // The picker imports the UI package's browser-only PDF worker. It is irrelevant
 // to this pure validation test and unavailable in Bun's test runtime.
-mock.module('@/components/app-shell/input/WorkingDirectorySelector', () => ({
-  WorkingDirectorySelector: () => null,
+mock.module('../ProjectDirectoryPicker', () => ({
+  ProjectDirectoryPicker: () => null,
 }))
 
 const { validateCreateProjectInput } = await import('../CreateProjectDialog')

@@ -4,7 +4,6 @@
 
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { FolderOpen } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -15,11 +14,12 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useRegisterModal } from '@/context/ModalContext'
-import { WorkingDirectorySelector } from '@/components/app-shell/input/WorkingDirectorySelector'
+import { ProjectDirectoryPicker } from './ProjectDirectoryPicker'
 
 export interface CreateProjectDialogInput {
   name: string
   workingDirectory: string
+  workingDirectories: string[]
 }
 
 export interface CreateProjectValidation {
@@ -53,13 +53,12 @@ interface CreateProjectDialogProps {
 
 export function CreateProjectDialog({
   open,
-  workspaceId,
   onCancel,
   onSubmit,
 }: CreateProjectDialogProps) {
   const { t } = useTranslation()
   const [name, setName] = React.useState('')
-  const [workingDirectory, setWorkingDirectory] = React.useState('')
+  const [workingDirectories, setWorkingDirectories] = React.useState<string[]>([])
   const [nameTouched, setNameTouched] = React.useState(false)
   const [workingDirectoryTouched, setWorkingDirectoryTouched] = React.useState(false)
 
@@ -70,13 +69,13 @@ export function CreateProjectDialog({
   React.useEffect(() => {
     if (open) {
       setName('')
-      setWorkingDirectory('')
+      setWorkingDirectories([])
       setNameTouched(false)
       setWorkingDirectoryTouched(false)
     }
   }, [open])
 
-  const validation = validateCreateProjectInput(name, workingDirectory)
+  const validation = validateCreateProjectInput(name, workingDirectories[0] ?? '')
 
   const handleSubmit = () => {
     setNameTouched(true)
@@ -84,7 +83,8 @@ export function CreateProjectDialog({
     if (!validation.canSubmit) return
     onSubmit({
       name: name.trim(),
-      workingDirectory: workingDirectory.trim(),
+      workingDirectory: workingDirectories[0]!,
+      workingDirectories,
     })
   }
 
@@ -131,31 +131,12 @@ export function CreateProjectDialog({
             <span className="text-sm font-medium">
               {t('projectsList.createDialogWorkingDirectoryLabel')}
             </span>
-            <WorkingDirectorySelector
-              workingDirectory={workingDirectory || undefined}
-              onWorkingDirectoryChange={(path) => {
-                setWorkingDirectory(path)
+            <ProjectDirectoryPicker
+              value={workingDirectories}
+              onChange={(paths) => {
+                setWorkingDirectories(paths)
                 setWorkingDirectoryTouched(true)
               }}
-              workspaceId={workspaceId}
-              side="bottom"
-              renderTrigger={({ workingDirectory: selectedPath }) => (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-auto min-h-9 w-full justify-start gap-2 px-3 py-2 text-left font-normal"
-                  aria-invalid={workingDirectoryTouched && validation.workingDirectoryRequired}
-                  aria-describedby={workingDirectoryTouched && validation.workingDirectoryRequired
-                    ? 'create-project-working-directory-error'
-                    : undefined}
-                  onBlur={() => setWorkingDirectoryTouched(true)}
-                >
-                  <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className={selectedPath ? 'min-w-0 truncate' : 'text-muted-foreground'}>
-                    {selectedPath || t('projectsList.createDialogWorkingDirectoryPlaceholder')}
-                  </span>
-                </Button>
-              )}
             />
             {workingDirectoryTouched && validation.workingDirectoryRequired && (
               <p

@@ -44,7 +44,7 @@ function getOAuthAccess(piAuth?: SearchProviderAuthConfig): string | undefined {
  *  - oauth.access (legacy/explicit oauth shape), or
  *  - api_key.key (current runtime shape for ChatGPT Plus OAuth bearer token)
  */
-function getOpenAiCodexAccessToken(piAuth?: SearchProviderAuthConfig): string | undefined {
+export function getOpenAiCodexAccessToken(piAuth?: SearchProviderAuthConfig): string | undefined {
   if (piAuth?.provider !== 'openai-codex') return undefined;
   return getOAuthAccess(piAuth) ?? getApiKey(piAuth);
 }

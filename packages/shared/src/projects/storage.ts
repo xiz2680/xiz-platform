@@ -18,7 +18,7 @@ import {
   unlinkSync,
   readFileSync,
 } from 'fs';
-import { basename, extname, join } from 'path';
+import { basename, extname, join, normalize, isAbsolute } from 'path';
 import { randomUUID } from 'crypto';
 import { atomicWriteFileSync, readJsonFileSync, getMimeType } from '../utils/files.ts';
 import { generateUniqueSlug } from '../utils/slug.ts';
@@ -107,9 +107,8 @@ export function loadProjectConfig(
     const config = readJsonFileSync<ProjectConfig>(configPath);
 
     // Expand portable paths on read so consumers always see absolute paths.
-    if (config.workingDirectory) {
-      config.workingDirectory = expandPath(config.workingDirectory);
-    }
+    config.workingDirectories = normalizeProjectDirectories(config.workingDirectories ?? (config.workingDirectory ? [config.workingDirectory] : []));
+    config.workingDirectory = config.workingDirectories[0];
 
     return config;
   } catch (error) {
@@ -135,6 +134,8 @@ export function saveProjectConfig(workspaceRootPath: string, config: ProjectConf
   if (storageConfig.workingDirectory) {
     storageConfig.workingDirectory = toPortablePath(storageConfig.workingDirectory);
   }
+  storageConfig.workingDirectories = normalizeProjectDirectories(config.workingDirectories ?? (config.workingDirectory ? [config.workingDirectory] : [])).map(toPortablePath);
+  storageConfig.workingDirectory = storageConfig.workingDirectories[0];
 
   atomicWriteFileSync(join(dir, 'config.json'), JSON.stringify(storageConfig, null, 2));
 }
@@ -267,10 +268,24 @@ export function generateProjectSlug(workspaceRootPath: string, name: string): st
 /**
  * Create a new project in a workspace.
  */
+export function normalizeProjectDirectories(paths: string[]): string[] {
+  if (!Array.isArray(paths) || paths.some(path => typeof path !== 'string')) throw new Error('Invalid project folders');
+  return [...new Set(paths.map(path => path.trim()).filter(Boolean).map(path => normalize(expandPath(path))))];
+}
+
+function validateProjectDirectories(paths: string[]): string[] {
+  const normalized = normalizeProjectDirectories(paths);
+  for (const path of normalized) {
+    if (!isAbsolute(path) || !existsSync(path) || !statSync(path).isDirectory()) throw new Error(`Invalid project folder: ${path}`);
+  }
+  return normalized;
+}
+
 export function createProject(
   workspaceRootPath: string,
   input: CreateProjectInput,
 ): ProjectConfig {
+  const directories = validateProjectDirectories(input.workingDirectories ?? (input.workingDirectory ? [input.workingDirectory] : []));
   const slug = generateProjectSlug(workspaceRootPath, input.name);
   const now = Date.now();
 
@@ -279,7 +294,8 @@ export function createProject(
     slug,
     name: input.name,
     description: input.description,
-    workingDirectory: input.workingDirectory,
+    workingDirectory: directories[0],
+    workingDirectories: directories,
     details: input.details,
     colorTheme: input.colorTheme,
     createdAt: now,
@@ -315,6 +331,10 @@ export function updateProject(
     updatedAt: Date.now(),
   };
 
+  if ('workingDirectories' in patch || 'workingDirectory' in patch) {
+    updated.workingDirectories = validateProjectDirectories(patch.workingDirectories ?? (patch.workingDirectory ? [patch.workingDirectory] : []));
+    updated.workingDirectory = updated.workingDirectories[0];
+  }
   saveProjectConfig(workspaceRootPath, updated);
   return updated;
 }

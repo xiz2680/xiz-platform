@@ -840,6 +840,7 @@
   "projectsList.createDialogNameRequired": "请输入项目名称。",
   "projectsList.createDialogTitle": "新项目",
   "projectsList.createDialogWorkingDirectoryLabel": "工作目录",
+  "projectsList.addFolder": "添加文件夹",
   "projectsList.createDialogWorkingDirectoryPlaceholder": "选择文件夹…",
   "projectsList.createDialogWorkingDirectoryRequired": "请选择工作目录。",
   "projectsList.createFailed": "创建项目失败",

@@ -12,6 +12,7 @@ import {
 } from '@earendil-works/pi-coding-agent';
 import { createSearchTool } from './tools/search/create-search-tool.ts';
 import { createWebFetchTool } from './tools/web-fetch.ts';
+import { createImageGenerationTool } from './tools/image-generation.ts';
 import type { WebSearchProvider } from './tools/search/types.ts';
 
 /**
@@ -50,6 +51,12 @@ function assertValidToolDefinition(tool: ToolDefinition<any, any>): void {
 }
 
 describe('Pi subprocess tool shape contract', () => {
+  it('registers image generation with a discoverable prompt and canonical identity', () => {
+    const tool = createImageGenerationTool(() => null);
+    assertValidToolDefinition(tool);
+    expect(tool.name).toBe('generate_image');
+    expect(tool.promptSnippet).toContain('image-preview');
+  });
   it('createSearchTool returns a valid ToolDefinition with promptSnippet', () => {
     const tool = createSearchTool(stubSearchProvider);
     assertValidToolDefinition(tool);
@@ -124,6 +131,7 @@ describe('Pi SDK 0.70.0 CreateAgentSessionOptions contract', () => {
       createLsToolDefinition('/tmp'),
       searchTool,
       webFetchTool,
+      createImageGenerationTool(() => null),
     ];
     const tools = customTools.map(t => t.name);
     const allowlistSet = new Set(tools);

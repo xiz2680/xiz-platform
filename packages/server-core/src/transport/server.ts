@@ -25,6 +25,7 @@ import {
 } from '@xiz-platform/shared/protocol'
 import type { RpcServer, HandlerFn, RequestContext } from './types'
 import { serializeEnvelope, deserializeEnvelope } from './codec'
+import { requestTimeoutForChannel } from './request-timeout'
 import { createLogger } from '@xiz-platform/shared/utils'
 
 // ---------------------------------------------------------------------------
@@ -237,12 +238,13 @@ export class WsRpcServer implements RpcServer {
       }
 
       const id = randomUUID()
+      const timeoutMs = requestTimeoutForChannel(channel, 30_000)
       const timeout = setTimeout(() => {
         this.pendingInvokes.delete(id)
-        const err = new Error(`Client request timeout: ${channel} (30000ms)`)
+        const err = new Error(`Client request timeout: ${channel} (${timeoutMs}ms)`)
         ;(err as any).code = 'CLIENT_REQUEST_TIMEOUT'
         reject(err)
-      }, 30_000)
+      }, timeoutMs)
 
       this.pendingInvokes.set(id, { clientId, resolve, reject, timeout })
 
@@ -660,11 +662,12 @@ export class WsRpcServer implements RpcServer {
     }
 
     try {
+      const handlerTimeoutMs = requestTimeoutForChannel(channel, WsRpcServer.HANDLER_TIMEOUT_MS)
       const result = await Promise.race([
         handler(ctx, ...(args ?? [])),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Handler timeout: ${channel} (${WsRpcServer.HANDLER_TIMEOUT_MS}ms)`)),
-            WsRpcServer.HANDLER_TIMEOUT_MS),
+          setTimeout(() => reject(new Error(`Handler timeout: ${channel} (${handlerTimeoutMs}ms)`)),
+            handlerTimeoutMs),
         ),
       ])
       const response: MessageEnvelope = {

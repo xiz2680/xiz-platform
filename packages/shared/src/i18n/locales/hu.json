@@ -840,6 +840,7 @@
   "projectsList.createDialogNameRequired": "Adj meg egy projektnevet.",
   "projectsList.createDialogTitle": "Új projekt",
   "projectsList.createDialogWorkingDirectoryLabel": "Munkakönyvtár",
+  "projectsList.addFolder": "Mappa hozzáadása",
   "projectsList.createDialogWorkingDirectoryPlaceholder": "Mappa kiválasztása…",
   "projectsList.createDialogWorkingDirectoryRequired": "Válassz munkakönyvtárat.",
   "projectsList.createFailed": "A projekt létrehozása nem sikerült",

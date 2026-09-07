@@ -7,6 +7,7 @@
  */
 
 import {
+  Archive,
   Building2,
   Keyboard,
   MessageSquare,
@@ -50,4 +51,5 @@ export const SETTINGS_ICONS: Record<SettingsSubpage, React.ComponentType<IconPro
   server: ServerSettingsIcon,
   shortcuts: ShortcutsIcon,
   preferences: PreferencesIcon,
+  archived: Archive,
 }
